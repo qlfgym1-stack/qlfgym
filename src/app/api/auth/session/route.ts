@@ -4,7 +4,7 @@ import { apiSuccess, apiError } from '@/lib/api-response';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = getSession(req);
+    const session = await getSession(req);
     if (!session) {
       return apiError('Non authentifié', 401);
     }

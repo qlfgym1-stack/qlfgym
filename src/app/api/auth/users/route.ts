@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = verifyAuthenticated(req);
+    const session = await verifyAuthenticated(req);
     withRole(session, ['admin']);
 
     const { data, error } = await supabaseAdmin

@@ -9,11 +9,11 @@ export async function seedDatabase() {
   const today = now.split('T')[0];
 
   const sampleMembers: { firstName: string; lastName: string; gender: Gender; phone: string; email: string; birthDate: string; subType: SubscriptionType; role: MemberRole }[] = [
-    { firstName: 'Ahmed', lastName: 'Benali', gender: Gender.MALE, phone: '0555123456', email: 'ahmed@email.com', birthDate: '1990-03-15', subType: SubscriptionType.MONTHLY, role: MemberRole.MEMBER },
-    { firstName: 'Fatima', lastName: 'Ziani', gender: Gender.FEMALE, phone: '0666123456', email: 'fatima@email.com', birthDate: '1995-07-22', subType: SubscriptionType.QUARTERLY, role: MemberRole.MEMBER },
-    { firstName: 'Karim', lastName: 'Hadj', gender: Gender.MALE, phone: '0777123456', email: 'karim@email.com', birthDate: '1988-11-08', subType: SubscriptionType.ANNUAL, role: MemberRole.COACH },
-    { firstName: 'Sara', lastName: 'Mokhtar', gender: Gender.FEMALE, phone: '0555987654', email: 'sara@email.com', birthDate: '2000-01-30', subType: SubscriptionType.MONTHLY, role: MemberRole.MEMBER },
-    { firstName: 'Yacine', lastName: 'Bouaziz', gender: Gender.MALE, phone: '0666987654', email: 'yacine@email.com', birthDate: '1992-06-14', subType: SubscriptionType.SEMESTER, role: MemberRole.MEMBER },
+    { firstName: 'Ahmed', lastName: 'Benali', gender: Gender.MALE, phone: '+213661234567', email: 'ahmed@email.com', birthDate: '1990-03-15', subType: SubscriptionType.MONTHLY, role: MemberRole.MEMBER },
+    { firstName: 'Fatima', lastName: 'Ziani', gender: Gender.FEMALE, phone: '+213551234567', email: 'fatima@email.com', birthDate: '1995-07-22', subType: SubscriptionType.QUARTERLY, role: MemberRole.MEMBER },
+    { firstName: 'Karim', lastName: 'Hadj', gender: Gender.MALE, phone: '+213771234567', email: 'karim@email.com', birthDate: '1988-11-08', subType: SubscriptionType.ANNUAL, role: MemberRole.COACH },
+    { firstName: 'Sara', lastName: 'Mokhtar', gender: Gender.FEMALE, phone: '+213662345678', email: 'sara@email.com', birthDate: '2000-01-30', subType: SubscriptionType.MONTHLY, role: MemberRole.MEMBER },
+    { firstName: 'Yacine', lastName: 'Bouaziz', gender: Gender.MALE, phone: '+213552345678', email: 'yacine@email.com', birthDate: '1992-06-14', subType: SubscriptionType.SEMESTER, role: MemberRole.MEMBER },
   ];
 
   for (const data of sampleMembers) {

@@ -3,7 +3,7 @@ import { verifyAuthenticated, withRole } from '@/lib/api-auth';
 import type { Session } from '@/types/api';
 
 export async function withAuth(req: NextRequest): Promise<Session> {
-  return verifyAuthenticated(req);
+  return await verifyAuthenticated(req);
 }
 
 export function withRoleCheck(session: Session, roles: string[]): void {

@@ -10,7 +10,7 @@ const RECEPTION_PATHS = ['/reception'];
 const PROTECTED_PATHS = [...ADMIN_PATHS, ...RECEPTION_PATHS];
 const PUBLIC_PATHS = ['/login'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p)) || pathname === '/') {
@@ -30,7 +30,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  const verified = verifyCookie(cookieStr, AUTH_SECRET);
+  const verified = await verifyCookie(cookieStr, AUTH_SECRET);
   if (!verified) {
     if (pathname.startsWith('/api')) {
       return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Session invalide' } }, { status: 401 });

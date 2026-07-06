@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = verifyAuthenticated(req);
+    const session = await verifyAuthenticated(req);
     withRole(session, ['admin', 'reception']);
 
     const { searchParams } = new URL(req.url);
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = verifyAuthenticated(req);
+    const session = await verifyAuthenticated(req);
     withRole(session, ['admin', 'reception']);
 
     const body = await req.json();
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const session = verifyAuthenticated(req);
+    const session = await verifyAuthenticated(req);
     withRole(session, ['admin', 'reception']);
 
     const body = await req.json();
@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = verifyAuthenticated(req);
+    const session = await verifyAuthenticated(req);
     withRole(session, ['admin']);
 
     const { searchParams } = new URL(req.url);

@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const session = verifyAuthenticated(req);
+    const session = await verifyAuthenticated(req);
     withRole(session, ['admin']);
 
     const { username, password, role } = await req.json();

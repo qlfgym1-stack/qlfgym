@@ -5,11 +5,11 @@ import type { Session } from '@/types/api';
 const COOKIE_NAME = 'qlf-auth';
 const AUTH_SECRET = process.env.AUTH_SECRET || 'qlf-dev-secret-change-in-production';
 
-export function getSession(req: NextRequest): Session | null {
+export async function getSession(req: NextRequest): Promise<Session | null> {
   const cookieStr = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookieStr) return null;
 
-  const verified = verifyCookie(cookieStr, AUTH_SECRET);
+  const verified = await verifyCookie(cookieStr, AUTH_SECRET);
   if (!verified) return null;
 
   const parsed = parseCookieValue(verified);
@@ -23,8 +23,8 @@ export function getSession(req: NextRequest): Session | null {
   };
 }
 
-export function verifyAuthenticated(req: NextRequest): Session {
-  const session = getSession(req);
+export async function verifyAuthenticated(req: NextRequest): Promise<Session> {
+  const session = await getSession(req);
   if (!session) {
     throw new Error('Non authentifié');
   }
