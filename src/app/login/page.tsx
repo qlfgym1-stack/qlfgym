@@ -37,20 +37,14 @@ export default function LoginPage() {
               <div className="relative w-28 h-28 lg:w-36 lg:h-36" style={{ perspective: '800px' }}>
                 <div
                   className="w-full h-full"
-                  style={{
-                    animation: 'logoFloat3D 6s ease-in-out infinite',
-                    transformStyle: 'preserve-3d',
-                  }}
+                  style={{ animation: 'logoFloat3D 6s ease-in-out infinite', transformStyle: 'preserve-3d' }}
                 >
                   <div
                     className="w-full h-full"
-                    style={{
-                      animation: 'logoRotate 8s ease-in-out infinite',
-                      transformStyle: 'preserve-3d',
-                    }}
+                    style={{ animation: 'logoRotate 8s ease-in-out infinite', transformStyle: 'preserve-3d' }}
                   >
                     <Image
-                      src="/logo.png"
+                      src="/qlg-3d.png"
                       alt="QLF GYM"
                       fill
                       className="object-contain drop-shadow-[0_0_40px_rgba(59,130,246,0.4)]"
@@ -128,20 +122,14 @@ export default function LoginPage() {
               <div className="relative w-20 h-20 mb-4" style={{ perspective: '800px' }}>
                 <div
                   className="w-full h-full"
-                  style={{
-                    animation: 'logoFloat3D 6s ease-in-out infinite',
-                    transformStyle: 'preserve-3d',
-                  }}
+                  style={{ animation: 'logoFloat3D 6s ease-in-out infinite', transformStyle: 'preserve-3d' }}
                 >
                   <div
                     className="w-full h-full"
-                    style={{
-                      animation: 'logoRotate 8s ease-in-out infinite',
-                      transformStyle: 'preserve-3d',
-                    }}
+                    style={{ animation: 'logoRotate 8s ease-in-out infinite', transformStyle: 'preserve-3d' }}
                   >
                     <Image
-                      src="/logo.png"
+                      src="/qlg-3d.png"
                       alt="QLF GYM"
                       fill
                       className="object-contain drop-shadow-[0_0_30px_rgba(59,130,246,0.3)]"
@@ -218,21 +206,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes logoFloat3D {
-          0%, 100% { transform: translateY(0px) rotateX(0deg); }
-          25% { transform: translateY(-6px) rotateX(2deg); }
-          50% { transform: translateY(-10px) rotateX(0deg); }
-          75% { transform: translateY(-6px) rotateX(-2deg); }
-        }
-        @keyframes logoRotate {
-          0%, 100% { transform: rotateY(0deg) rotateZ(0deg); }
-          25% { transform: rotateY(5deg) rotateZ(1deg); }
-          50% { transform: rotateY(0deg) rotateZ(0deg); }
-          75% { transform: rotateY(-5deg) rotateZ(-1deg); }
-        }
-      `}</style>
     </div>
   );
 }
