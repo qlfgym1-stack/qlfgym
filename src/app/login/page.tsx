@@ -31,10 +31,10 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/40" />
 
       <div className="relative z-10 flex flex-col lg:flex-row w-full min-h-screen">
-        <div className="flex-1 flex flex-col px-8 lg:px-16 xl:px-24 py-8 lg:py-12">
-          <div className="flex flex-col items-center lg:items-start" style={{ perspective: '800px' }}>
+        <div className="flex-1 flex flex-col items-center px-8 lg:px-16 xl:px-24 py-8 lg:py-12">
+          <div className="w-full max-w-xl flex flex-col items-center lg:items-start" style={{ perspective: '800px' }}>
             <div
-              className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72"
+              className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-80 lg:h-80"
               style={{
                 animation: 'logoFloat3D 6s ease-in-out infinite',
                 transformStyle: 'preserve-3d',
@@ -51,9 +51,9 @@ export default function LoginPage() {
                   src="/qlf-3d.png"
                   alt="QLF"
                   fill
-                  className="object-contain drop-shadow-[0_0_80px_rgba(212,168,67,0.4)]"
+                  className="object-contain drop-shadow-[0_0_80px_rgba(59,130,246,0.3)]"
                   priority
-                  sizes="288px"
+                  sizes="320px"
                 />
               </div>
             </div>
@@ -69,18 +69,19 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight" style={{ color: '#D4A843' }}>
-                  QLF <span className="text-white">GYM</span>
+                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
+                  <span className="text-blue-500">QLF</span>{' '}
+                  <span className="text-white">GYM</span>
                 </h1>
                 <p className="text-gray-400 text-sm lg:text-base">Gestion &amp; Suivi</p>
               </div>
             </div>
           </div>
 
-          <div className="max-w-xl mt-10 lg:mt-12">
+          <div className="w-full max-w-xl mt-10 lg:mt-12">
             <h2 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-white leading-tight mb-6">
               La solution compl&egrave;te pour<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r" style={{ backgroundImage: 'linear-gradient(to right, #D4A843, #F5D78E)' }}>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-gray-300">
                 la gestion de votre salle de sport
               </span>
             </h2>
@@ -93,8 +94,8 @@ export default function LoginPage() {
 
             <div className="grid grid-cols-2 gap-4 max-w-lg">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
-                  <Users className="w-4 h-4" style={{ color: '#D4A843' }} />
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Gestion membres</p>
@@ -102,8 +103,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
-                  <TrendingUp className="w-4 h-4" style={{ color: '#D4A843' }} />
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Statistiques</p>
@@ -111,8 +112,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
-                  <Dumbbell className="w-4 h-4" style={{ color: '#D4A843' }} />
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Dumbbell className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Acc&egrave;s</p>
@@ -120,8 +121,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
-                  <ShieldCheck className="w-4 h-4" style={{ color: '#D4A843' }} />
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-blue-400" />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">S&eacute;curis&eacute;</p>
@@ -154,13 +155,13 @@ export default function LoginPage() {
                     src="/qlf-3d.png"
                     alt="QLF"
                     fill
-                    className="object-contain drop-shadow-[0_0_40px_rgba(212,168,67,0.3)]"
+                    className="object-contain drop-shadow-[0_0_40px_rgba(59,130,246,0.3)]"
                     priority
                     sizes="128px"
                   />
                 </div>
               </div>
-              <h1 className="text-xl font-bold" style={{ color: '#D4A843' }}>QLF <span className="text-white">GYM</span></h1>
+              <h1 className="text-xl font-bold"><span className="text-blue-500">QLF</span> <span className="text-white">GYM</span></h1>
               <p className="text-gray-400 text-sm">Gestion &amp; Suivi</p>
             </div>
 
