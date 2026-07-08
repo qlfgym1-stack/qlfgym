@@ -30,10 +30,10 @@ export default function LoginPage() {
       />
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/40" />
 
-      <div className="relative z-10 flex flex-col w-full min-h-screen">
-        <div className="py-6 lg:py-8 flex justify-center" style={{ perspective: '800px' }}>
+      <div className="relative z-10 flex flex-col w-full h-screen">
+        <div className="pt-0.5 pb-0 flex justify-center" style={{ perspective: '800px' }}>
           <div
-            className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-80 lg:h-80"
+            className="relative w-40 h-40 sm:w-48 sm:h-48 lg:w-52 lg:h-52"
             style={{
               animation: 'logoFloat3D 6s ease-in-out infinite',
               transformStyle: 'preserve-3d',
@@ -50,19 +50,19 @@ export default function LoginPage() {
                 src="/qlf-3d.png"
                 alt="QLF"
                 fill
-                className="object-contain drop-shadow-[0_0_80px_rgba(59,130,246,0.3)]"
+                className="object-contain drop-shadow-[0_0_60px_rgba(59,130,246,0.3)]"
                 priority
-                sizes="320px"
+                sizes="208px"
               />
             </div>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row w-full">
-          <div className="flex-1 flex flex-col items-center px-8 lg:px-16 xl:px-24 pb-8 lg:pb-12">
+        <div className="flex-1 flex flex-col lg:flex-row w-full min-h-0">
+          <div className="flex-1 flex flex-col items-center px-6 lg:px-12 xl:px-16 pb-1 lg:pb-2 overflow-y-auto">
             <div className="w-full max-w-xl flex flex-col items-center lg:items-start">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full overflow-hidden ring-2 ring-white/20 shrink-0">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="relative w-10 h-10 lg:w-12 lg:h-12 rounded-full overflow-hidden ring-2 ring-white/20 shrink-0">
                   <Image
                     src="/logo.png"
                     alt="QLF GYM"
@@ -80,50 +80,49 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <h2 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-white leading-tight mb-6">
+              <h2 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-white leading-tight mb-2">
                 La solution compl&egrave;te pour<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-gray-300">
                   la gestion de votre salle de sport
                 </span>
               </h2>
 
-              <p className="text-gray-300 text-base lg:text-lg leading-relaxed mb-10">
+              <p className="text-gray-300 text-base lg:text-lg leading-relaxed mb-3">
                 Pilotez votre salle en toute simplicit&eacute; : abonnements, acc&egrave;s, 
                 suivi des membres, encaissements, et statistiques en temps r&eacute;el.
-                Un tableau de bord puissant pour une gestion optimale.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 max-w-lg">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <Users className="w-4 h-4 text-blue-400" />
+              <div className="grid grid-cols-2 gap-2 max-w-lg">
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5 w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Users className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
                     <p className="text-white text-sm font-medium">Gestion membres</p>
                     <p className="text-gray-500 text-xs">Profils &amp; abonnements</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <TrendingUp className="w-4 h-4 text-blue-400" />
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5 w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
                     <p className="text-white text-sm font-medium">Statistiques</p>
                     <p className="text-gray-500 text-xs">Rapports &amp; analytics</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <Dumbbell className="w-4 h-4 text-blue-400" />
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5 w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Dumbbell className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
                     <p className="text-white text-sm font-medium">Acc&egrave;s</p>
                     <p className="text-gray-500 text-xs">Tourniquets &amp; check-in</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-4 h-4 text-blue-400" />
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5 w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
                   </div>
                   <div>
                     <p className="text-white text-sm font-medium">S&eacute;curis&eacute;</p>
@@ -134,11 +133,11 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="w-full lg:w-[440px] xl:w-[480px] flex items-center justify-center p-6 lg:p-8 lg:pr-12 xl:pr-16">
-            <div className="w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-              <div className="flex lg:hidden flex-col items-center mb-8">
+          <div className="w-full lg:w-[420px] xl:w-[460px] flex items-center justify-center p-4 lg:p-6 lg:pr-10 xl:pr-12">
+            <div className="w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+              <div className="flex lg:hidden flex-col items-center mb-3">
                 <div
-                  className="relative w-32 h-32 mb-4"
+                  className="relative w-24 h-24 mb-2"
                   style={{
                     perspective: '800px',
                     animation: 'logoFloat3D 6s ease-in-out infinite',
@@ -156,9 +155,9 @@ export default function LoginPage() {
                       src="/qlf-3d.png"
                       alt="QLF"
                       fill
-                      className="object-contain drop-shadow-[0_0_40px_rgba(59,130,246,0.3)]"
+                      className="object-contain drop-shadow-[0_0_30px_rgba(59,130,246,0.3)]"
                       priority
-                      sizes="128px"
+                      sizes="96px"
                     />
                   </div>
                 </div>
@@ -166,7 +165,7 @@ export default function LoginPage() {
                 <p className="text-gray-400 text-sm">Gestion &amp; Suivi</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-200 mb-1">
                     Email ou nom d&apos;utilisateur
@@ -177,7 +176,7 @@ export default function LoginPage() {
                       type="text"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-500 focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                      className="w-full pl-10 pr-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-500 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                       placeholder={isEmail ? "exemple@email.com" : "Nom d'utilisateur"}
                       required
                     />
@@ -192,7 +191,7 @@ export default function LoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-500 focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                      className="w-full pl-10 pr-10 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-gray-500 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                       placeholder="Mot de passe"
                       required
                     />
@@ -202,13 +201,13 @@ export default function LoginPage() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                       tabIndex={-1}
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
 
                 {error && (
-                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-2.5">
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-3 py-2">
                     {error}
                   </div>
                 )}
@@ -216,14 +215,14 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {loading ? 'Connexion...' : 'Se connecter'}
                 </button>
               </form>
 
-              <p className="text-center text-gray-500 text-xs mt-8">
+              <p className="text-center text-gray-500 text-xs mt-4">
                 QLF GYM &copy; {new Date().getFullYear()}
               </p>
             </div>
@@ -234,15 +233,15 @@ export default function LoginPage() {
       <style>{`
         @keyframes logoFloat3D {
           0%, 100% { transform: translateY(0px) rotateX(0deg); }
-          25% { transform: translateY(-8px) rotateX(2deg); }
-          50% { transform: translateY(-14px) rotateX(0deg); }
-          75% { transform: translateY(-8px) rotateX(-2deg); }
+          25% { transform: translateY(-6px) rotateX(2deg); }
+          50% { transform: translateY(-10px) rotateX(0deg); }
+          75% { transform: translateY(-6px) rotateX(-2deg); }
         }
         @keyframes logoRotate {
           0%, 100% { transform: rotateY(0deg) rotateZ(0deg); }
-          25% { transform: rotateY(6deg) rotateZ(1deg); }
+          25% { transform: rotateY(5deg) rotateZ(1deg); }
           50% { transform: rotateY(0deg) rotateZ(0deg); }
-          75% { transform: rotateY(-6deg) rotateZ(-1deg); }
+          75% { transform: rotateY(-5deg) rotateZ(-1deg); }
         }
       `}</style>
     </div>
