@@ -31,39 +31,56 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/40" />
 
       <div className="relative z-10 flex flex-col lg:flex-row w-full min-h-screen">
-        <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 xl:px-24 py-12">
-          <div className="max-w-xl">
-            <div className="mb-10" style={{ perspective: '800px' }}>
+        <div className="flex-1 flex flex-col px-8 lg:px-16 xl:px-24 py-8 lg:py-12">
+          <div className="flex flex-col items-center lg:items-start" style={{ perspective: '800px' }}>
+            <div
+              className="relative w-56 h-56 sm:w-64 sm:h-64 lg:w-72 lg:h-72"
+              style={{
+                animation: 'logoFloat3D 6s ease-in-out infinite',
+                transformStyle: 'preserve-3d',
+              }}
+            >
               <div
-                className="relative w-48 h-48 lg:w-64 lg:h-64 mx-auto lg:mx-0"
+                className="w-full h-full"
                 style={{
-                  animation: 'logoFloat3D 6s ease-in-out infinite',
+                  animation: 'logoRotate 8s ease-in-out infinite',
                   transformStyle: 'preserve-3d',
                 }}
               >
-                <div
-                  className="w-full h-full"
-                  style={{
-                    animation: 'logoRotate 8s ease-in-out infinite',
-                    transformStyle: 'preserve-3d',
-                  }}
-                >
-                  <Image
-                    src="/qlf-3d.png"
-                    alt="QLF GYM"
-                    fill
-                    className="object-contain drop-shadow-[0_0_60px_rgba(59,130,246,0.5)]"
-                    priority
-                    sizes="256px"
-                  />
-                </div>
+                <Image
+                  src="/qlf-3d.png"
+                  alt="QLF"
+                  fill
+                  className="object-contain drop-shadow-[0_0_80px_rgba(212,168,67,0.4)]"
+                  priority
+                  sizes="288px"
+                />
               </div>
-              <p className="text-gray-400 text-sm lg:text-base text-center lg:text-left mt-4">Gestion &amp; Suivi</p>
             </div>
 
+            <div className="flex items-center gap-4 mt-6">
+              <div className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full overflow-hidden ring-2 ring-white/20 shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="QLF GYM"
+                  fill
+                  className="object-contain p-1"
+                  priority
+                />
+              </div>
+              <div>
+                <h1 className="text-3xl lg:text-4xl font-bold tracking-tight" style={{ color: '#D4A843' }}>
+                  QLF <span className="text-white">GYM</span>
+                </h1>
+                <p className="text-gray-400 text-sm lg:text-base">Gestion &amp; Suivi</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-xl mt-10 lg:mt-12">
             <h2 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-white leading-tight mb-6">
               La solution compl&egrave;te pour<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r" style={{ backgroundImage: 'linear-gradient(to right, #D4A843, #F5D78E)' }}>
                 la gestion de votre salle de sport
               </span>
             </h2>
@@ -76,8 +93,8 @@ export default function LoginPage() {
 
             <div className="grid grid-cols-2 gap-4 max-w-lg">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4 text-primary" />
+                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
+                  <Users className="w-4 h-4" style={{ color: '#D4A843' }} />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Gestion membres</p>
@@ -85,8 +102,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-4 h-4 text-primary" />
+                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
+                  <TrendingUp className="w-4 h-4" style={{ color: '#D4A843' }} />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Statistiques</p>
@@ -94,8 +111,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                  <Dumbbell className="w-4 h-4 text-primary" />
+                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
+                  <Dumbbell className="w-4 h-4" style={{ color: '#D4A843' }} />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">Acc&egrave;s</p>
@@ -103,8 +120,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
+                <div className="mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(212,168,67,0.2)' }}>
+                  <ShieldCheck className="w-4 h-4" style={{ color: '#D4A843' }} />
                 </div>
                 <div>
                   <p className="text-white text-sm font-medium">S&eacute;curis&eacute;</p>
@@ -118,32 +135,32 @@ export default function LoginPage() {
         <div className="w-full lg:w-[440px] xl:w-[480px] flex items-center justify-center p-6 lg:p-8 lg:pr-12 xl:pr-16">
           <div className="w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
             <div className="flex lg:hidden flex-col items-center mb-8">
-              <div className="relative w-32 h-32 mb-4" style={{ perspective: '800px' }}>
+              <div
+                className="relative w-32 h-32 mb-4"
+                style={{
+                  perspective: '800px',
+                  animation: 'logoFloat3D 6s ease-in-out infinite',
+                  transformStyle: 'preserve-3d',
+                }}
+              >
                 <div
                   className="w-full h-full"
                   style={{
-                    animation: 'logoFloat3D 6s ease-in-out infinite',
+                    animation: 'logoRotate 8s ease-in-out infinite',
                     transformStyle: 'preserve-3d',
                   }}
                 >
-                  <div
-                    className="w-full h-full"
-                    style={{
-                      animation: 'logoRotate 8s ease-in-out infinite',
-                      transformStyle: 'preserve-3d',
-                    }}
-                  >
-                    <Image
-                      src="/qlf-3d.png"
-                      alt="QLF GYM"
-                      fill
-                      className="object-contain drop-shadow-[0_0_40px_rgba(59,130,246,0.4)]"
-                      priority
-                      sizes="128px"
-                    />
-                  </div>
+                  <Image
+                    src="/qlf-3d.png"
+                    alt="QLF"
+                    fill
+                    className="object-contain drop-shadow-[0_0_40px_rgba(212,168,67,0.3)]"
+                    priority
+                    sizes="128px"
+                  />
                 </div>
               </div>
+              <h1 className="text-xl font-bold" style={{ color: '#D4A843' }}>QLF <span className="text-white">GYM</span></h1>
               <p className="text-gray-400 text-sm">Gestion &amp; Suivi</p>
             </div>
 
