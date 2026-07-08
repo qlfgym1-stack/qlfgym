@@ -13,7 +13,6 @@ import {
   CalendarCheck, TrendingUp, Package, Receipt,
   ChevronLeft,
 } from 'lucide-react';
-import Image from 'next/image';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem {
@@ -139,25 +138,8 @@ export default function ManagementLayout({ children }: { children: React.ReactNo
         <div className="h-16 flex items-center justify-between px-4 border-b border-border">
           {sidebarOpen ? (
             <div className="flex items-center gap-3">
-              <div className="relative w-9 h-9" style={{ perspective: '600px' }}>
-                <div
-                  className="w-full h-full"
-                  style={{ animation: 'logoFloat3DSmall 5s ease-in-out infinite', transformStyle: 'preserve-3d' }}
-                >
-                  <div
-                    className="w-full h-full"
-                    style={{ animation: 'logoRotateSmall 7s ease-in-out infinite', transformStyle: 'preserve-3d' }}
-                  >
-                    <Image
-                      src="/qlg-3d.png"
-                      alt="QLF GYM"
-                      fill
-                      className="object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]"
-                      priority
-                      sizes="36px"
-                    />
-                  </div>
-                </div>
+              <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                <Dumbbell className="w-4 h-4 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground">QLF</p>
@@ -165,25 +147,8 @@ export default function ManagementLayout({ children }: { children: React.ReactNo
               </div>
             </div>
           ) : (
-            <div className="relative w-8 h-8 mx-auto" style={{ perspective: '600px' }}>
-              <div
-                className="w-full h-full"
-                style={{ animation: 'logoFloat3DSmall 5s ease-in-out infinite', transformStyle: 'preserve-3d' }}
-              >
-                <div
-                  className="w-full h-full"
-                  style={{ animation: 'logoRotateSmall 7s ease-in-out infinite', transformStyle: 'preserve-3d' }}
-                >
-                  <Image
-                    src="/qlg-3d.png"
-                    alt="QLF GYM"
-                    fill
-                    className="object-contain drop-shadow-[0_0_12px_rgba(59,130,246,0.3)]"
-                    priority
-                    sizes="32px"
-                  />
-                </div>
-              </div>
+            <div className="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center mx-auto">
+              <Dumbbell className="w-4 h-4 text-primary" />
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-muted hover:text-foreground p-1">

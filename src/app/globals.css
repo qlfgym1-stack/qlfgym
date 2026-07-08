@@ -37,31 +37,3 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 1px var(--color-primary);
 }
-
-@keyframes logoFloat3D {
-  0%, 100% { transform: translateY(0px) rotateX(0deg); }
-  25% { transform: translateY(-6px) rotateX(2deg); }
-  50% { transform: translateY(-10px) rotateX(0deg); }
-  75% { transform: translateY(-6px) rotateX(-2deg); }
-}
-
-@keyframes logoRotate {
-  0%, 100% { transform: rotateY(0deg) rotateZ(0deg); }
-  25% { transform: rotateY(5deg) rotateZ(1deg); }
-  50% { transform: rotateY(0deg) rotateZ(0deg); }
-  75% { transform: rotateY(-5deg) rotateZ(-1deg); }
-}
-
-@keyframes logoFloat3DSmall {
-  0%, 100% { transform: translateY(0px) rotateX(0deg); }
-  25% { transform: translateY(-3px) rotateX(2deg); }
-  50% { transform: translateY(-6px) rotateX(0deg); }
-  75% { transform: translateY(-3px) rotateX(-2deg); }
-}
-
-@keyframes logoRotateSmall {
-  0%, 100% { transform: rotateY(0deg) rotateZ(0deg); }
-  25% { transform: rotateY(4deg) rotateZ(1deg); }
-  50% { transform: rotateY(0deg) rotateZ(0deg); }
-  75% { transform: rotateY(-4deg) rotateZ(-1deg); }
-}
