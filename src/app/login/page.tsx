@@ -33,18 +33,35 @@ export default function LoginPage() {
       <div className="relative z-10 flex flex-col lg:flex-row w-full min-h-screen">
         <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 xl:px-24 py-12">
           <div className="max-w-xl">
-            <div className="flex items-center gap-4 mb-8 group perspective-[800px]">
-              <div className="relative w-16 h-16 lg:w-20 lg:h-20 rounded-2xl overflow-hidden ring-2 ring-primary/40 shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] transition-all duration-500 group-hover:shadow-[0_0_50px_-5px_rgba(59,130,246,0.5)] group-hover:rotate-[5deg] group-hover:scale-105" style={{ transformStyle: 'preserve-3d' }}>
-                <Image
-                  src="/logo.png"
-                  alt="QLF GYM"
-                  fill
-                  className="object-contain p-2"
-                  priority
-                />
+            <div className="flex items-center gap-6 mb-8">
+              <div className="relative w-28 h-28 lg:w-36 lg:h-36" style={{ perspective: '800px' }}>
+                <div
+                  className="w-full h-full"
+                  style={{
+                    animation: 'logoFloat3D 6s ease-in-out infinite',
+                    transformStyle: 'preserve-3d',
+                  }}
+                >
+                  <div
+                    className="w-full h-full"
+                    style={{
+                      animation: 'logoRotate 8s ease-in-out infinite',
+                      transformStyle: 'preserve-3d',
+                    }}
+                  >
+                    <Image
+                      src="/logo.png"
+                      alt="QLF GYM"
+                      fill
+                      className="object-contain drop-shadow-[0_0_40px_rgba(59,130,246,0.4)]"
+                      priority
+                      sizes="144px"
+                    />
+                  </div>
+                </div>
               </div>
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight">
+                <h1 className="text-3xl lg:text-5xl font-bold text-white tracking-tight">
                   QLF <span className="text-primary">GYM</span>
                 </h1>
                 <p className="text-gray-400 text-sm lg:text-base">Gestion &amp; Suivi</p>
@@ -108,14 +125,31 @@ export default function LoginPage() {
         <div className="w-full lg:w-[440px] xl:w-[480px] flex items-center justify-center p-6 lg:p-8 lg:pr-12 xl:pr-16">
           <div className="w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
             <div className="flex lg:hidden flex-col items-center mb-8">
-              <div className="relative w-16 h-16 mb-4 rounded-2xl overflow-hidden ring-2 ring-primary/30">
-                <Image
-                  src="/logo.png"
-                  alt="QLF GYM"
-                  fill
-                  className="object-contain p-2"
-                  priority
-                />
+              <div className="relative w-20 h-20 mb-4" style={{ perspective: '800px' }}>
+                <div
+                  className="w-full h-full"
+                  style={{
+                    animation: 'logoFloat3D 6s ease-in-out infinite',
+                    transformStyle: 'preserve-3d',
+                  }}
+                >
+                  <div
+                    className="w-full h-full"
+                    style={{
+                      animation: 'logoRotate 8s ease-in-out infinite',
+                      transformStyle: 'preserve-3d',
+                    }}
+                  >
+                    <Image
+                      src="/logo.png"
+                      alt="QLF GYM"
+                      fill
+                      className="object-contain drop-shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+                      priority
+                      sizes="80px"
+                    />
+                  </div>
+                </div>
               </div>
               <h1 className="text-xl font-bold text-white">QLF GYM</h1>
               <p className="text-gray-400 text-sm">Gestion &amp; Suivi</p>
@@ -184,6 +218,21 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes logoFloat3D {
+          0%, 100% { transform: translateY(0px) rotateX(0deg); }
+          25% { transform: translateY(-6px) rotateX(2deg); }
+          50% { transform: translateY(-10px) rotateX(0deg); }
+          75% { transform: translateY(-6px) rotateX(-2deg); }
+        }
+        @keyframes logoRotate {
+          0%, 100% { transform: rotateY(0deg) rotateZ(0deg); }
+          25% { transform: rotateY(5deg) rotateZ(1deg); }
+          50% { transform: rotateY(0deg) rotateZ(0deg); }
+          75% { transform: rotateY(-5deg) rotateZ(-1deg); }
+        }
+      `}</style>
     </div>
   );
 }
