@@ -14,7 +14,7 @@ const ROBOT_SIZE = 56
 const DRAG_THRESHOLD = 5
 const STORAGE_KEY = "fitmanager-ai-robot-pos"
 
-// ===== Mode FITNESS : après 15s d'inactivité le robot s'entraîne (1x → 3x) =====
+// ===== Mode FITNESS : après 15s d'inactivité le coach s'entraîne (1x → 3x) =====
 const FITNESS_IDLE_MS = 15000
 const FITNESS_SCALE = 3
 const FITNESS_MARGIN = 60
@@ -78,16 +78,11 @@ export function AiFloatingRobot() {
   const { isOnline } = useNetworkStatus()
   const { loading, panelOpen: open, togglePanel, closePanel } = useAiChat()
   const [pos, setPos] = useState<RobotPos>(loadPos)
-  const [blinking, setBlinking] = useState(false)
   const [dragging, setDragging] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dragRef = useRef({ startX: 0, startY: 0, startPosX: 0, startPosY: 0, moved: false })
   const armedRef = useRef(false)
   const latestPos = useRef<RobotPos>({ x: 0, y: 0 })
-  const gazeTarget = useRef({ x: 0, y: 0 })
-  const gazeRaf = useRef<number | null>(null)
-  const gazeReturnTimer = useRef<number | null>(null)
-  const canHover = useRef(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -122,11 +117,6 @@ export function AiFloatingRobot() {
   useEffect(() => {
     closePanel()
   }, [currentModule, closePanel])
-
-  // Détection souris fine (désactivée sur mobile / tactile)
-  useEffect(() => {
-    canHover.current = window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ?? false
-  }, [])
 
   // Recalcule la position si la fenêtre change (le robot ne sort jamais de l'écran)
   useEffect(() => {
@@ -355,115 +345,20 @@ export function AiFloatingRobot() {
     return () => clearInterval(id)
   }, [pos])
 
-  // Suivi du regard : pointermove + rAF pour la souris, direction wander sinon
+  // Suivi souris pour le timer d'inactivité (plus de SVG eyes)
   useEffect(() => {
-    if (!canHover.current) return
-
-    const applyGaze = () => {
-      const el = buttonRef.current
-      if (el) {
-        el.style.setProperty("--eye-x", gazeTarget.current.x.toFixed(2))
-        el.style.setProperty("--eye-y", gazeTarget.current.y.toFixed(2))
-      }
-      gazeRaf.current = null
-    }
-
-    // Souris : suivre le curseur
     const onPointerMove = (e: PointerEvent) => {
-      if (!canHover.current) return
       mouseActive.current = true
       lastInteraction.current = "mouse"
       if (mouseActiveTimer.current) clearTimeout(mouseActiveTimer.current)
       mouseActiveTimer.current = window.setTimeout(() => { mouseActive.current = false }, 2000)
-      const nx = e.clientX / window.innerWidth - 0.5
-      const ny = e.clientY / window.innerHeight - 0.5
-      gazeTarget.current = { x: nx * 16, y: ny * 12 }
-      if (gazeReturnTimer.current) {
-        window.clearTimeout(gazeReturnTimer.current)
-        gazeReturnTimer.current = null
-      }
-      buttonRef.current?.classList.remove("gaze-return")
-      if (gazeRaf.current == null) gazeRaf.current = requestAnimationFrame(applyGaze)
     }
-
-    // Wander : les yeux regardent dans la direction du mouvement
-    let prevPos: RobotPos | null = null
-    const checkWanderGaze = () => {
-      if (!mouseActive.current && lastInteraction.current === "wander") {
-        // On utilise la position actuelle du robot via le DOM pour calculer la direction
-        const btn = buttonRef.current
-        if (btn && prevPos) {
-          const curPos = { x: parseFloat(btn.style.left) || 0, y: parseFloat(btn.style.top) || 0 }
-          const dx = curPos.x - prevPos.x
-          const dy = curPos.y - prevPos.y
-          const dist = Math.hypot(dx, dy)
-          if (dist > 0.5) {
-            const nx = Math.min(Math.max((dx / dist) * 8, -8), 8)
-            const ny = Math.min(Math.max((dy / dist) * 6, -6), 6)
-            gazeTarget.current = { x: nx, y: ny }
-            buttonRef.current?.classList.remove("gaze-return")
-            if (gazeRaf.current == null) gazeRaf.current = requestAnimationFrame(applyGaze)
-          }
-          prevPos = curPos
-        } else if (btn) {
-          prevPos = { x: parseFloat(btn.style.left) || 0, y: parseFloat(btn.style.top) || 0 }
-        }
-      } else {
-        prevPos = null
-      }
-    }
-    const wanderGazeInterval = window.setInterval(checkWanderGaze, 100)
-
-    const onLeave = () => {
-      if (!canHover.current) return
-      buttonRef.current?.classList.add("gaze-return")
-      gazeTarget.current = { x: 0, y: 0 }
-      applyGaze()
-      if (gazeReturnTimer.current) window.clearTimeout(gazeReturnTimer.current)
-      gazeReturnTimer.current = window.setTimeout(() => {
-        buttonRef.current?.classList.remove("gaze-return")
-      }, 400)
-    }
-
     window.addEventListener("pointermove", onPointerMove, { passive: true })
-    document.documentElement.addEventListener("mouseleave", onLeave)
     return () => {
       window.removeEventListener("pointermove", onPointerMove)
-      document.documentElement.removeEventListener("mouseleave", onLeave)
-      window.clearInterval(wanderGazeInterval)
-      if (gazeRaf.current != null) cancelAnimationFrame(gazeRaf.current)
-      if (gazeReturnTimer.current) window.clearTimeout(gazeReturnTimer.current)
       if (mouseActiveTimer.current) window.clearTimeout(mouseActiveTimer.current)
     }
   }, [])
-
-  // Clignement naturel : intervalle aléatoire 3-7s, durée 120-220ms
-  useEffect(() => {
-    let blinkTimer: number | undefined
-    let closeTimer: number | undefined
-
-    const schedule = () => {
-      blinkTimer = window.setTimeout(() => {
-        setBlinking(true)
-        closeTimer = window.setTimeout(() => {
-          setBlinking(false)
-          schedule()
-        }, 120 + Math.random() * 100)
-      }, 3000 + Math.random() * 4000)
-    }
-
-    schedule()
-    return () => {
-      if (blinkTimer) window.clearTimeout(blinkTimer)
-      if (closeTimer) window.clearTimeout(closeTimer)
-    }
-  }, [])
-
-  // Applique le clignement via variable CSS (sans casser le suivi du regard)
-  useEffect(() => {
-    const el = buttonRef.current
-    if (el) el.style.setProperty("--eye-blink", blinking ? "0.1" : "1")
-  }, [blinking])
 
   if (!isAuthenticated) return null
 
@@ -482,7 +377,6 @@ export function AiFloatingRobot() {
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    // R1 : drag uniquement après un pointerdown réel (et bouton enfoncé) — jamais au simple survol
     if (!armedRef.current || e.buttons === 0) return
     const d = dragRef.current
     if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > DRAG_THRESHOLD) d.moved = true
@@ -530,8 +424,6 @@ export function AiFloatingRobot() {
   }
 
   const onClick = () => {
-    // Les boutons avec pointer events gèrent le toggle dans onPointerUp ; ce
-    // garde évite un double toggle déclenché par le clic synthétique du navigateur.
     return
   }
 
@@ -555,7 +447,34 @@ export function AiFloatingRobot() {
         onPointerCancel={onPointerCancel}
       >
         <span className="fitmanager-ai-robot-scope" style={{ transform: fitActive ? `scale(${FITNESS_SCALE})` : "scale(1)" }}>
-          <AiRobotSvg state={orbState} fitMode={fitActive} fitEx={fitEx} />
+          <img
+            src="/Coach QLF AI.png"
+            alt="Coach QLF AI"
+            className={`fitmanager-ai-coach-img${fitActive ? " is-exercising" : ""}`}
+            draggable={false}
+          />
+          {/* === OVERLAYS FITNESS === */}
+          {fitActive && fitEx === "curl" && (
+            <div className="fitmanager-ai-coach-overlay">
+              <span className="fitmanager-ai-coach-dumbbell left">🏋️</span>
+              <span className="fitmanager-ai-coach-dumbbell right">🏋️</span>
+            </div>
+          )}
+          {fitActive && fitEx === "bar" && (
+            <div className="fitmanager-ai-coach-overlay">
+              <span className="fitmanager-ai-coach-barbell">🏋️‍♂️</span>
+            </div>
+          )}
+          {fitActive && fitEx === "water" && (
+            <div className="fitmanager-ai-coach-overlay">
+              <span className="fitmanager-ai-coach-water">💧</span>
+            </div>
+          )}
+          {fitActive && fitEx === "rest" && (
+            <div className="fitmanager-ai-coach-overlay">
+              <span className="fitmanager-ai-coach-check">✅</span>
+            </div>
+          )}
         </span>
       </button>
     </>
@@ -582,7 +501,7 @@ function AiFloatingPanel({ onClose, onExpand }: { onClose: () => void; onExpand:
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="fitmanager-ai-panel__orb-mini">
-              <AiRobotSvg state={orbState} small />
+              <img src="/Coach QLF AI.png" alt="" className="fitmanager-ai-coach-mini" draggable={false} />
             </span>
             <div>
               <p className="text-sm font-semibold leading-tight">{t("aiAssistant.chatTitle")}</p>
@@ -627,212 +546,4 @@ function useLazyAssistantData() {
   })
   const data = useAssistantData(orgId, filters)
   return { data, isLoading: data.isLoading }
-}
-
-// ===== Robot glass/transparent, QF GYM, néon rouge+bleu =====
-// SVG + CSS natifs, ids uniques par instance via `uid`.
-function AiRobotSvg({
-  state,
-  small,
-  fitMode,
-  fitEx,
-}: {
-  state: "idle" | "thinking" | "responding" | "offline"
-  small?: boolean
-  fitMode?: boolean
-  fitEx?: FitExercise
-}) {
-  const uid = small ? "fitm-ai-s" : "fitm-ai"
-  const offline = state === "offline"
-  const thinking = state === "thinking"
-  const responding = state === "responding"
-  const active = thinking || responding
-  const fitClass = fitMode ? " fitmanager-ai-robot__body is-fitness" : ""
-  const exClass =
-    fitEx === "curl" ? " is-curl" : fitEx === "bar" ? " is-bar" : fitEx === "water" ? " is-drinking" : fitEx === "rest" ? " is-resting" : ""
-  return (
-    <svg
-      className="fitmanager-ai-robot"
-      viewBox="0 0 120 132"
-      width="120"
-      height="132"
-      role="img"
-      aria-hidden="true"
-    >
-      <defs>
-        {/* Tête noire glossy */}
-        <radialGradient id={`${uid}-head`} cx="0.45" cy="0.35" r="0.65">
-          <stop offset="0%" stopColor="#2a2a2a" />
-          <stop offset="60%" stopColor="#111111" />
-          <stop offset="100%" stopColor="#050505" />
-        </radialGradient>
-        {/* Corps glass/transparent */}
-        <linearGradient id={`${uid}-glass`} x1="0.3" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor="rgba(180,210,255,0.22)" />
-          <stop offset="50%" stopColor="rgba(100,160,240,0.10)" />
-          <stop offset="100%" stopColor="rgba(60,100,180,0.18)" />
-        </linearGradient>
-        {/* Anneau poitrain rouge-bleu */}
-        <linearGradient id={`${uid}-ring`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ef4444" />
-          <stop offset="50%" stopColor="#7c3aed" />
-          <stop offset="100%" stopColor="#3b82f6" />
-        </linearGradient>
-        {/* Halo yeux bleu */}
-        <radialGradient id={`${uid}-eyeGlow`} cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0%" stopColor="#93c5fd" />
-          <stop offset="50%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-        </radialGradient>
-        {/* Base hover rouge */}
-        <radialGradient id={`${uid}-hoverRed`} cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
-        </radialGradient>
-        {/* Base hover bleu */}
-        <radialGradient id={`${uid}-hoverBlue`} cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-        </radialGradient>
-        {/* Reflet tête */}
-        <linearGradient id={`${uid}-shine`} x1="0.3" y1="0" x2="0.7" y2="0.5">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-        </linearGradient>
-      </defs>
-
-      <g className={`${offline ? "fitmanager-ai-robot--offline" : ""}${fitClass}${exClass}`}>
-
-        {/* === BASE DE VOL === */}
-        <ellipse cx="60" cy="122" rx="28" ry="5" fill={`url(#${uid}-hoverRed)`} className="fitmanager-ai-robot__base-ring" />
-        <ellipse cx="60" cy="122" rx="22" ry="3.5" fill="none" stroke="#ef4444" strokeWidth="1.2" opacity="0.7" className="fitmanager-ai-robot__base-ring" />
-        <ellipse cx="60" cy="120" rx="18" ry="3" fill="none" stroke="#3b82f6" strokeWidth="1" opacity="0.6" className="fitmanager-ai-robot__base-ring" />
-        {/* Pilier central */}
-        <rect x="56" y="113" width="8" height="10" rx="4" fill="rgba(30,30,30,0.7)" stroke="rgba(96,165,250,0.2)" strokeWidth="0.8" />
-
-        {/* === CORPS GLASS === */}
-        <path d="M40 82 Q38 78 42 74 L78 74 Q82 78 80 82 L78 112 Q76 116 60 117 Q44 116 42 112 Z" fill={`url(#${uid}-glass)`} stroke="rgba(147,197,253,0.35)" strokeWidth="1.2" />
-        {/* Reflets corps */}
-        <path d="M44 78 L46 110" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeLinecap="round" />
-        <path d="M74 78 L76 108" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round" />
-
-        {/* === POITRAIN : Logo QF GYM === */}
-        <circle cx="60" cy="93" r="14" fill="#111" stroke={`url(#${uid}-ring)`} strokeWidth="2" />
-        <circle cx="60" cy="93" r="11" fill="none" stroke="rgba(239,68,68,0.3)" strokeWidth="0.6" />
-        {/* Texte QF GYM */}
-        <text x="60" y="91" textAnchor="middle" fill="#3b82f6" fontSize="7" fontWeight="bold" fontFamily="Arial, sans-serif">QF</text>
-        <text x="60" y="99" textAnchor="middle" fill="#ef4444" fontSize="5" fontWeight="bold" fontFamily="Arial, sans-serif">GYM</text>
-
-        {/* === ANTENNES === */}
-        {/* Antenne gauche (rouge) */}
-        <line x1="42" y1="22" x2="34" y2="6" stroke="#1a1a1a" strokeWidth="2.5" strokeLinecap="round" />
-        <circle cx="34" cy="5" r="2.8" fill={active ? "#ef4444" : "#7f1d1d"} className="fitmanager-ai-robot__antenna" />
-        <circle cx="34" cy="5" r="4" fill="none" stroke="#ef4444" strokeWidth="0.6" opacity={active ? "0.8" : "0.3"} />
-        {/* Antenne droite (bleu) */}
-        <line x1="78" y1="22" x2="86" y2="6" stroke="#1a1a1a" strokeWidth="2.5" strokeLinecap="round" />
-        <circle cx="86" cy="5" r="2.8" fill={active ? "#3b82f6" : "#1e3a5f"} className="fitmanager-ai-robot__antenna" />
-        <circle cx="86" cy="5" r="4" fill="none" stroke="#3b82f6" strokeWidth="0.6" opacity={active ? "0.8" : "0.3"} />
-
-        {/* === TÊTE === */}
-        <ellipse cx="60" cy="42" rx="32" ry="28" fill={`url(#${uid}-head)`} stroke="rgba(96,165,250,0.3)" strokeWidth="1" />
-        {/* Reflet gloss */}
-        <ellipse cx="52" cy="30" rx="18" ry="10" fill={`url(#${uid}-shine)`} />
-        {/* Bandeau néon haut */}
-        <path d="M36 30 Q60 22 84 30" fill="none" stroke="#3b82f6" strokeWidth="1.2" opacity="0.5" />
-        <path d="M38 32 Q60 25 82 32" fill="none" stroke="#ef4444" strokeWidth="0.8" opacity="0.4" />
-
-        {/* === ÉCOUTEURS === */}
-        {/* Gauche */}
-        <circle cx="28" cy="42" r="7" fill="#1a1a1a" stroke="rgba(239,68,68,0.5)" strokeWidth="1.2" />
-        <circle cx="28" cy="42" r="4.5" fill="none" stroke="#ef4444" strokeWidth="0.8" opacity="0.6" />
-        <circle cx="28" cy="42" r="2" fill="#ef4444" opacity={active ? "0.9" : "0.4"} />
-        {/* Droite */}
-        <circle cx="92" cy="42" r="7" fill="#1a1a1a" stroke="rgba(59,130,246,0.5)" strokeWidth="1.2" />
-        <circle cx="92" cy="42" r="4.5" fill="none" stroke="#3b82f6" strokeWidth="0.8" opacity="0.6" />
-        <circle cx="92" cy="42" r="2" fill="#3b82f6" opacity={active ? "0.9" : "0.4"} />
-
-        {/* === VISIÈRE / FACE === */}
-        <rect x="38" y="33" width="44" height="22" rx="11" fill="rgba(0,0,0,0.6)" stroke="rgba(147,197,253,0.2)" strokeWidth="0.8" />
-
-        {/* === YEUX : suivent le curseur via --eye-x/--eye-y, clignent via --eye-blink === */}
-        <g className="fitmanager-ai-eyes">
-          {/* Halo yeux */}
-          <circle cx="50" cy="44" r="8" fill={`url(#${uid}-eyeGlow)`} className="fitmanager-ai-robot__eye-glow" />
-          <circle cx="70" cy="44" r="8" fill={`url(#${uid}-eyeGlow)`} className="fitmanager-ai-robot__eye-glow" />
-          {/* Yeux souriants (arcs) */}
-          <path d="M43 44 Q50 37 57 44" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" className="fitmanager-ai-robot__eye" />
-          <path d="M63 44 Q70 37 77 44" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" className="fitmanager-ai-robot__eye" />
-          {/* Points lumineux yeux */}
-          <circle cx="50" cy="41" r="1.2" fill="#ffffff" className="fitmanager-ai-robot__eye-hl" />
-          <circle cx="70" cy="41" r="1.2" fill="#ffffff" className="fitmanager-ai-robot__eye-hl" />
-        </g>
-
-        {/* Petit sourire */}
-        <path d="M55 50 Q60 54 65 50" fill="none" stroke="#60a5fa" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-
-        {/* === MAIN GAUCHE : pouce levé === */}
-        <g className="fitmanager-ai-robot__arm-l" transform="translate(18, 78)">
-          {/* Paume */}
-          <rect x="0" y="4" width="10" height="12" rx="3" fill="rgba(30,30,30,0.8)" stroke="rgba(96,165,250,0.25)" strokeWidth="0.8" />
-          {/* Pouce */}
-          <rect x="2" y="-2" width="4" height="8" rx="2" fill="rgba(30,30,30,0.9)" stroke="rgba(96,165,250,0.3)" strokeWidth="0.6" transform="rotate(-15 4 4)" />
-          {/* Doigts */}
-          <rect x="0" y="14" width="3" height="6" rx="1.5" fill="rgba(30,30,30,0.7)" />
-          <rect x="3.5" y="14" width="3" height="6" rx="1.5" fill="rgba(30,30,30,0.7)" />
-          <rect x="7" y="14" width="3" height="5" rx="1.5" fill="rgba(30,30,30,0.7)" />
-          {/* Haltère bleu pendant les curls */}
-          {fitMode && fitEx === "curl" && (
-            <g className="fitmanager-ai-robot__dumbbell">
-              <line x1="4" y1="20" x2="4" y2="34" stroke="#cbd5e1" strokeWidth="2.2" />
-              <rect x="0.5" y="34" width="7" height="6" rx="1.5" fill="#3b82f6" opacity="0.95" />
-              <rect x="0.5" y="18" width="7" height="6" rx="1.5" fill="#2563eb" opacity="0.95" />
-              <rect x="0.5" y="34" width="3" height="6" rx="1" fill="#60a5fa" opacity="0.6" />
-            </g>
-          )}
-        </g>
-
-        {/* === MAIN DROITE : bulle cerveau === */}
-        <g className="fitmanager-ai-robot__arm-r" transform="translate(88, 76)">
-          {/* Bras */}
-          <rect x="-2" y="6" width="6" height="10" rx="3" fill="rgba(30,30,30,0.7)" stroke="rgba(96,165,250,0.2)" strokeWidth="0.6" />
-          {/* Bulle */}
-          <circle cx="4" cy="0" r="7" fill="rgba(0,0,0,0.5)" stroke="rgba(239,68,68,0.4)" strokeWidth="0.8" />
-          {/* Icône cerveau simplifiée */}
-          <path d="M1 -2 Q0 -4 2 -4 Q4 -4 3 -2" fill="none" stroke="#ef4444" strokeWidth="0.7" opacity="0.8" />
-          <path d="M5 -2 Q4 -4 6 -4 Q8 -4 7 -2" fill="none" stroke="#3b82f6" strokeWidth="0.7" opacity="0.8" />
-          <line x1="4" y1="-4" x2="4" y2="2" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" />
-          {/* Haltère rouge pendant les curls */}
-          {fitMode && fitEx === "curl" && (
-            <g className="fitmanager-ai-robot__dumbbell">
-              <line x1="3" y1="16" x2="3" y2="30" stroke="#cbd5e1" strokeWidth="2.2" />
-              <rect x="-0.5" y="30" width="7" height="6" rx="1.5" fill="#ef4444" opacity="0.95" />
-              <rect x="-0.5" y="14" width="7" height="6" rx="1.5" fill="#dc2626" opacity="0.95" />
-              <rect x="-0.5" y="30" width="3" height="6" rx="1" fill="#fca5a5" opacity="0.6" />
-            </g>
-          )}
-        </g>
-
-        {/* === BARRE : développé épaules (au-dessus de la poitrine) === */}
-        {fitMode && fitEx === "bar" && (
-          <g className="fitmanager-ai-robot__bar">
-            <line x1="16" y1="72" x2="104" y2="72" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
-            <rect x="14" y="66" width="6" height="12" rx="1.5" fill="#ef4444" />
-            <rect x="14" y="66" width="3" height="12" rx="1" fill="#fca5a5" opacity="0.6" />
-            <rect x="100" y="66" width="6" height="12" rx="1.5" fill="#3b82f6" />
-            <rect x="100" y="66" width="3" height="12" rx="1" fill="#93c5fd" opacity="0.6" />
-          </g>
-        )}
-
-        {/* === BOUTEILLE D'EAU : près de la bouche pendant le retour === */}
-        {fitMode && fitEx === "water" && (
-          <g className="fitmanager-ai-robot__bottle" transform="translate(66, 40)">
-            <rect x="-4" y="-2" width="10" height="14" rx="3" fill="rgba(147,197,253,0.55)" stroke="rgba(147,197,253,0.8)" strokeWidth="0.8" transform="rotate(16)" />
-            <rect x="-4" y="-2" width="4" height="14" rx="2" fill="rgba(255,255,255,0.25)" transform="rotate(16)" />
-            <rect x="0" y="-6" width="3" height="4" rx="1" fill="#60a5fa" transform="rotate(16)" />
-          </g>
-        )}
-
-      </g>
-    </svg>
-  )
 }
