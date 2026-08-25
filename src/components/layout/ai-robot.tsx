@@ -453,26 +453,71 @@ export function AiFloatingRobot() {
             className={`fitmanager-ai-coach-img${fitActive ? " is-exercising" : ""}`}
             draggable={false}
           />
-          {/* === OVERLAYS FITNESS === */}
+          {/* === OVERLAYS FITNESS (bras CSS + équipement) === */}
           {fitActive && fitEx === "curl" && (
             <div className="fitmanager-ai-coach-overlay">
-              <span className="fitmanager-ai-coach-dumbbell left">🏋️</span>
-              <span className="fitmanager-ai-coach-dumbbell right">🏋️</span>
+              {/* Bras gauche + haltère bleu */}
+              <div className="fitmanager-ai-arm fitmanager-ai-arm--left">
+                <div className="fitmanager-ai-upper-arm" />
+                <div className="fitmanager-ai-forearm" />
+                <div className="fitmanager-ai-hand" />
+                <div className="fitmanager-ai-dumbbell">
+                  <div className="fitmanager-ai-db-weight fitmanager-ai-db-weight--top" />
+                  <div className="fitmanager-ai-db-bar" />
+                  <div className="fitmanager-ai-db-weight fitmanager-ai-db-weight--bottom" />
+                </div>
+              </div>
+              {/* Bras droit + haltère rouge */}
+              <div className="fitmanager-ai-arm fitmanager-ai-arm--right">
+                <div className="fitmanager-ai-upper-arm" />
+                <div className="fitmanager-ai-forearm" />
+                <div className="fitmanager-ai-hand" />
+                <div className="fitmanager-ai-dumbbell">
+                  <div className="fitmanager-ai-db-weight fitmanager-ai-db-weight--top fitmanager-ai-db-weight--red" />
+                  <div className="fitmanager-ai-db-bar" />
+                  <div className="fitmanager-ai-db-weight fitmanager-ai-db-weight--bottom fitmanager-ai-db-weight--red" />
+                </div>
+              </div>
             </div>
           )}
           {fitActive && fitEx === "bar" && (
             <div className="fitmanager-ai-coach-overlay">
-              <span className="fitmanager-ai-coach-barbell">🏋️‍♂️</span>
+              <div className="fitmanager-ai-barbell">
+                <div className="fitmanager-ai-barbell-plate fitmanager-ai-barbell-plate--left" />
+                <div className="fitmanager-ai-barbell-bar" />
+                <div className="fitmanager-ai-barbell-plate fitmanager-ai-barbell-plate--right" />
+              </div>
+              <div className="fitmanager-ai-arm fitmanager-ai-arm--left fitmanager-ai-arm--press">
+                <div className="fitmanager-ai-upper-arm" />
+                <div className="fitmanager-ai-forearm" />
+              </div>
+              <div className="fitmanager-ai-arm fitmanager-ai-arm--right fitmanager-ai-arm--press">
+                <div className="fitmanager-ai-upper-arm" />
+                <div className="fitmanager-ai-forearm" />
+              </div>
             </div>
           )}
           {fitActive && fitEx === "water" && (
             <div className="fitmanager-ai-coach-overlay">
-              <span className="fitmanager-ai-coach-water">💧</span>
+              <div className="fitmanager-ai-arm fitmanager-ai-arm--left fitmanager-ai-arm--drink">
+                <div className="fitmanager-ai-upper-arm" />
+                <div className="fitmanager-ai-forearm" />
+                <div className="fitmanager-ai-hand" />
+              </div>
+              <div className="fitmanager-ai-shaker">
+                <div className="fitmanager-ai-shaker-lid" />
+                <div className="fitmanager-ai-shaker-body" />
+              </div>
             </div>
           )}
           {fitActive && fitEx === "rest" && (
             <div className="fitmanager-ai-coach-overlay">
-              <span className="fitmanager-ai-coach-check">✅</span>
+              <div className="fitmanager-ai-rest-check">
+                <svg viewBox="0 0 32 32" className="fitmanager-ai-check-svg">
+                  <circle cx="16" cy="16" r="15" className="fitmanager-ai-check-circle" />
+                  <path d="M9 16 L14 21 L23 11" className="fitmanager-ai-check-path" />
+                </svg>
+              </div>
             </div>
           )}
         </span>
