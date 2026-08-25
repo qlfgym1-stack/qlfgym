@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/stores/auth"
 import { useT } from "@/i18n"
@@ -9,6 +9,7 @@ import { useAssistantData } from "@/pages/ai-assistant/hooks/useAssistantData"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { X, Maximize2 } from "lucide-react"
+import { useWolfMode, type Wolf3DAdapter } from "@/components/assistant"
 
 const WOLF_SIZE = 56
 const DRAG_THRESHOLD = 5
@@ -110,6 +111,47 @@ export function AiFloatingWolf() {
   const headRaf = useRef<number | null>(null)
   const headTarget = useRef({ x: 0, y: 0 })
   const headCurrent = useRef({ x: 0, y: 0 })
+
+  // Wolf mode detection (PNG vs 3D)
+  const wolfMode = useWolfMode()
+  const wolf3dRef = useRef<Wolf3DAdapter | null>(null)
+  const [Wolf3DComponent, setWolf3DComponent] = useState<React.ComponentType<any> | null>(null)
+
+  // Lazy-load 3D component when wolf.glb detected
+  useEffect(() => {
+    if (wolfMode === "3d" && !Wolf3DComponent) {
+      import("@/components/assistant/Wolf3D").then((m) => {
+        setWolf3DComponent(() => m.Wolf3DRenderer)
+      })
+    }
+  }, [wolfMode, Wolf3DComponent])
+
+  // Drive 3D animations when in 3D mode
+  useEffect(() => {
+    if (wolfMode !== "3d" || !wolf3dRef.current) return
+    const adapter = wolf3dRef.current
+    if (wolfEx === "curl" || wolfEx === "bar") {
+      adapter.playAnimation("BicepCurl", 1.6)
+    } else if (wolfEx === "water") {
+      adapter.playAnimation("Drink", 2.4)
+    } else if (wolfEx === "rest") {
+      adapter.playAnimation("Rest", 1.6)
+    } else {
+      adapter.playAnimation("Idle")
+    }
+  }, [wolfMode, wolfEx])
+
+  // Drive 3D lookAt from head offset
+  useEffect(() => {
+    if (wolfMode !== "3d" || !wolf3dRef.current) return
+    wolf3dRef.current.setLookAt(headOffset.x, headOffset.y)
+  }, [wolfMode, headOffset])
+
+  // Drive 3D scale
+  useEffect(() => {
+    if (wolfMode !== "3d" || !wolf3dRef.current) return
+    wolf3dRef.current.setScale(wolfActive ? WOLF_SCALE : 1)
+  }, [wolfMode, wolfActive])
 
   const currentModule = location.pathname.split("/")[1] || "dashboard"
 
@@ -464,28 +506,36 @@ export function AiFloatingWolf() {
           className="fitmanager-ai-wolf-scope"
           style={{ transform: wolfActive ? `scale(${WOLF_SCALE})` : "scale(1)" }}
         >
-          {/* Wolf body */}
+          {/* Wolf body — PNG (current) or 3D (when wolf.glb available) */}
           <span
             className={`fitmanager-ai-wolf-body${breathingClass}${isTraining ? " is-training" : ""}${isDrinking ? " is-drinking" : ""}${isResting ? " is-resting" : ""}`}
             style={{
               transform: `translate(${headOffset.x}px, ${headOffset.y}px)`,
             }}
           >
-            <img
-              src="/assistant/wolf.png"
-              alt="Wolf QLF GYM"
-              className={`fitmanager-ai-wolf-img${wolfActive ? " is-exercising" : ""}`}
-              draggable={false}
-            />
-            {/* Eyes overlay — blink via scaleY */}
-            <span
-              className="fitmanager-ai-wolf-eyes"
-              style={{ transform: `scaleY(${eyeScale}) translate(${headOffset.x * 0.5}px, ${headOffset.y * 0.3}px)` }}
-            />
+            {wolfMode === "3d" && Wolf3DComponent ? (
+              <Suspense fallback={null}>
+                <Wolf3DComponent ref={wolf3dRef} state={{ phase: wolfActive ? "training" : "normal", exercise: wolfEx, active: wolfActive, bubble: wolfBubble, eyeScale, headOffset, curlReps }} scale={wolfActive ? WOLF_SCALE : 1} size={WOLF_SIZE} />
+              </Suspense>
+            ) : (
+              <img
+                src="/assistant/wolf.png"
+                alt="Wolf QLF GYM"
+                className={`fitmanager-ai-wolf-img${wolfActive ? " is-exercising" : ""}`}
+                draggable={false}
+              />
+            )}
+            {/* Eyes overlay — blink via scaleY (PNG only) */}
+            {wolfMode !== "3d" && (
+              <span
+                className="fitmanager-ai-wolf-eyes"
+                style={{ transform: `scaleY(${eyeScale}) translate(${headOffset.x * 0.5}px, ${headOffset.y * 0.3}px)` }}
+              />
+            )}
           </span>
 
-          {/* Dumbbells — visible during training */}
-          {isTraining && (
+          {/* Dumbbells — visible during training (PNG mode only) */}
+          {wolfMode !== "3d" && isTraining && (
             <>
               <span className="fitmanager-ai-wolf-dumbbell fitmanager-ai-wolf-dumbbell--left">
                 <span className="fitmanager-ai-db-plate fitmanager-ai-db-plate--dark" />
@@ -500,8 +550,8 @@ export function AiFloatingWolf() {
             </>
           )}
 
-          {/* Shaker — visible during drinking */}
-          {isDrinking && (
+          {/* Shaker — visible during drinking (PNG mode only) */}
+          {wolfMode !== "3d" && isDrinking && (
             <span className="fitmanager-ai-wolf-shaker">
               <span className="fitmanager-ai-shaker-lid" />
               <span className="fitmanager-ai-shaker-body" />
