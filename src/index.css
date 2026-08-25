@@ -289,7 +289,7 @@
   animation: fitmanager-ai-wolf-breathe 4s ease-in-out infinite;
 }
 .fitmanager-ai-wolf-body.is-training {
-  animation: fitmanager-ai-wolf-curl 0.85s ease-in-out infinite;
+  animation: fitmanager-ai-wolf-curl-body 1.6s cubic-bezier(0.33, 0, 0.67, 1) infinite;
 }
 .fitmanager-ai-wolf-body.is-drinking {
   animation: fitmanager-ai-wolf-drink 1.4s ease-in-out infinite;
@@ -302,11 +302,19 @@
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-1px) scale(1.008); }
 }
-@keyframes fitmanager-ai-wolf-curl {
-  0%, 100% { transform: rotate(0deg) translateY(0); }
-  25% { transform: rotate(-2deg) translateY(-3px); }
-  50% { transform: rotate(0deg) translateY(-1px); }
-  75% { transform: rotate(2deg) translateY(-3px); }
+/* Curl body: torso tilt + shoulder rotation + micro head bob — realistic timing */
+@keyframes fitmanager-ai-wolf-curl-body {
+  0% { transform: rotate(0deg) translateY(0); }
+  /* concentric (montée rapide) */
+  15% { transform: rotate(-1.5deg) translateY(-2px); }
+  /* contraction (pause en haut) */
+  35% { transform: rotate(-1deg) translateY(-3px); }
+  45% { transform: rotate(-0.5deg) translateY(-2.5px); }
+  /* excentrique (descente contrôlée) */
+  65% { transform: rotate(0.5deg) translateY(-1px); }
+  /* repos en bas */
+  80% { transform: rotate(0deg) translateY(0); }
+  100% { transform: rotate(0deg) translateY(0); }
 }
 @keyframes fitmanager-ai-wolf-drink {
   0%, 100% { transform: rotate(0deg) translateY(0); }
@@ -330,6 +338,11 @@
 }
 .fitmanager-ai-wolf-img.is-exercising {
   filter: drop-shadow(0 4px 18px rgba(239, 68, 68, 0.4)) drop-shadow(0 2px 14px rgba(59, 130, 246, 0.5));
+  animation: fitmanager-ai-wolf-energy-pulse 1.6s ease-in-out infinite;
+}
+@keyframes fitmanager-ai-wolf-energy-pulse {
+  0%, 100% { filter: drop-shadow(0 4px 18px rgba(239, 68, 68, 0.4)) drop-shadow(0 2px 14px rgba(59, 130, 246, 0.5)); }
+  50% { filter: drop-shadow(0 4px 24px rgba(239, 68, 68, 0.6)) drop-shadow(0 2px 20px rgba(59, 130, 246, 0.7)); }
 }
 
 /* Eyes overlay — dark band that scaleYs to simulate blink */
@@ -463,7 +476,11 @@
   .fitmanager-ai-wolf-img,
   .fitmanager-ai-wolf-scope,
   .fitmanager-ai-wolf-body,
-  .fitmanager-ai-wolf-eyes {
+  .fitmanager-ai-wolf-eyes,
+  .fitmanager-ai-wolf-dumbbell,
+  .fitmanager-ai-wolf-shaker,
+  .fitmanager-ai-shaker-body,
+  .fitmanager-ai-shaker-body::after {
     animation: none !important;
     transition: none !important;
   }
@@ -487,7 +504,7 @@
   animation: none;
 }
 
-/* Dumbbells */
+/* Dumbbells — desync left/right for realism */
 .fitmanager-ai-wolf-dumbbell {
   position: absolute;
   display: flex;
@@ -495,16 +512,17 @@
   align-items: center;
   gap: 1px;
   z-index: 3;
-  animation: fitmanager-ai-db-bob 0.85s ease-in-out infinite;
 }
 .fitmanager-ai-wolf-dumbbell--left {
   left: -18px;
   top: 32%;
+  animation: fitmanager-ai-db-curl-l 1.6s cubic-bezier(0.33, 0, 0.67, 1) infinite;
 }
 .fitmanager-ai-wolf-dumbbell--right {
   right: -18px;
   top: 32%;
-  animation-delay: 0.425s;
+  animation: fitmanager-ai-db-curl-r 1.6s cubic-bezier(0.33, 0, 0.67, 1) infinite;
+  animation-delay: 0.15s;
 }
 .fitmanager-ai-db-plate {
   width: 14px;
@@ -513,24 +531,45 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.2);
 }
 .fitmanager-ai-db-plate--dark {
-  background: linear-gradient(180deg, #374151, #111827);
+  background: linear-gradient(180deg, #4b5563, #1f2937, #111827);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.15);
 }
 .fitmanager-ai-db-plate--blue {
-  background: linear-gradient(180deg, #60a5fa, #2563eb);
+  background: linear-gradient(180deg, #93c5fd, #3b82f6, #1d4ed8);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.3);
 }
 .fitmanager-ai-db-shaft {
   width: 3px;
   height: 12px;
-  background: linear-gradient(90deg, #9ca3af, #e5e7eb, #9ca3af);
+  background: linear-gradient(90deg, #9ca3af, #e5e7eb, #d1d5db, #e5e7eb, #9ca3af);
   border-radius: 1px;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
-@keyframes fitmanager-ai-db-bob {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-8px) rotate(-5deg); }
+/* Left dumbbell curl: follows body curl with independent arm timing */
+@keyframes fitmanager-ai-db-curl-l {
+  0% { transform: translateY(0) rotate(0deg); }
+  /* concentric montée */
+  15% { transform: translateY(-10px) rotate(-8deg); }
+  /* contraction en haut — slight pause */
+  35% { transform: translateY(-14px) rotate(-12deg); }
+  45% { transform: translateY(-12px) rotate(-10deg); }
+  /* excentrique descente contrôlée */
+  65% { transform: translateY(-4px) rotate(-3deg); }
+  80% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+/* Right dumbbell curl: mirror + slight delay offset */
+@keyframes fitmanager-ai-db-curl-r {
+  0% { transform: translateY(0) rotate(0deg); }
+  15% { transform: translateY(-10px) rotate(8deg); }
+  35% { transform: translateY(-14px) rotate(12deg); }
+  45% { transform: translateY(-12px) rotate(10deg); }
+  65% { transform: translateY(-4px) rotate(3deg); }
+  80% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(0) rotate(0deg); }
 }
 
-/* Shaker */
+/* Shaker — realistic with liquid slosh */
 .fitmanager-ai-wolf-shaker {
   position: absolute;
   right: -6px;
@@ -540,6 +579,7 @@
   flex-direction: column;
   align-items: center;
   animation: fitmanager-ai-shaker-tilt 1.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
 }
 .fitmanager-ai-shaker-lid {
   width: 12px;
@@ -558,10 +598,29 @@
     linear-gradient(180deg, #3b82f6, #1d4ed8);
   border-radius: 0 0 2px 2px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden;
+}
+/* Liquid inside shaker */
+.fitmanager-ai-shaker-body::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 1px;
+  right: 1px;
+  height: 60%;
+  background: linear-gradient(180deg, rgba(96,165,250,0.5), rgba(37,99,235,0.7));
+  border-radius: 0 0 1px 1px;
+  animation: fitmanager-ai-shaker-liquid 1.4s ease-in-out infinite;
 }
 @keyframes fitmanager-ai-shaker-tilt {
   0%, 100% { transform: rotate(0deg) translateY(0); }
   30%, 70% { transform: rotate(-25deg) translateY(-6px); }
+}
+@keyframes fitmanager-ai-shaker-liquid {
+  0%, 100% { transform: translateY(0) skewX(0deg); }
+  30% { transform: translateY(-2px) skewX(3deg); }
+  70% { transform: translateY(1px) skewX(-2deg); }
 }
 
 /* Status bubbles */

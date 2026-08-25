@@ -92,6 +92,7 @@ export function AiFloatingWolf() {
   const [wolfBubble, setWolfBubble] = useState<string | null>(null)
   const [eyeScale, setEyeScale] = useState(1)
   const [headOffset, setHeadOffset] = useState({ x: 0, y: 0 })
+  const [curlReps, setCurlReps] = useState(0)
   const wolfPhase = useRef<WolfPhase>("normal")
   const wolfActiveRef = useRef(false)
   const openRef = useRef(open)
@@ -126,13 +127,22 @@ export function AiFloatingWolf() {
   useEffect(() => { posRef.current = pos }, [pos])
   useEffect(() => { wolfActiveRef.current = wolfActive }, [wolfActive])
 
-  // ===== Eye blink =====
+  // ===== Eye blink — occasional double-blink =====
   useEffect(() => {
     const scheduleBlink = () => {
       const delay = 2500 + Math.random() * 4000
       blinkTimer.current = window.setTimeout(() => {
+        const isDouble = Math.random() < 0.25
         setEyeScale(0.05)
-        setTimeout(() => setEyeScale(1), 120 + Math.random() * 80)
+        setTimeout(() => {
+          setEyeScale(1)
+          if (isDouble) {
+            setTimeout(() => {
+              setEyeScale(0.05)
+              setTimeout(() => setEyeScale(1), 100 + Math.random() * 60)
+            }, 150 + Math.random() * 80)
+          }
+        }, 100 + Math.random() * 70)
         scheduleBlink()
       }, delay) as unknown as number
     }
@@ -143,19 +153,21 @@ export function AiFloatingWolf() {
   // ===== Head follow mouse =====
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
-      if (wolfActiveRef.current || draggingRef.current) return
+      if (draggingRef.current) return
       const cx = window.innerWidth / 2
       const cy = window.innerHeight / 2
+      const isFit = wolfActiveRef.current
       headTarget.current = {
-        x: ((e.clientX - cx) / cx) * 4,
-        y: ((e.clientY - cy) / cy) * 3,
+        x: ((e.clientX - cx) / cx) * (isFit ? 2 : 4),
+        y: ((e.clientY - cy) / cy) * (isFit ? 1.5 : 3),
       }
     }
     const animate = () => {
       const t = headTarget.current
       const c = headCurrent.current
-      c.x += (t.x - c.x) * 0.04
-      c.y += (t.y - c.y) * 0.04
+      const lerp = wolfActiveRef.current ? 0.02 : 0.04
+      c.x += (t.x - c.x) * lerp
+      c.y += (t.y - c.y) * lerp
       setHeadOffset({ x: c.x, y: c.y })
       headRaf.current = requestAnimationFrame(animate)
     }
@@ -215,10 +227,11 @@ export function AiFloatingWolf() {
   const runExerciseCycle = () => {
     if (wolfPhase.current !== "training") return
     setWolfEx((ex) => (ex === "curl" ? "bar" : "curl"))
+    setCurlReps((r) => r + 1)
     cycleTimer.current = window.setTimeout(() => {
       setWolfEx("rest")
-      cycleTimer.current = window.setTimeout(runExerciseCycle, 650) as unknown as number
-    }, 2400) as unknown as number
+      cycleTimer.current = window.setTimeout(runExerciseCycle, 800) as unknown as number
+    }, 1600) as unknown as number
   }
 
   const startReturn = () => {
@@ -234,6 +247,7 @@ export function AiFloatingWolf() {
         setWolfActive(false)
         setWolfEx("none")
         setWolfBubble(null)
+        setCurlReps(0)
         rearmIdle()
         const home = homePos.current
         const animate = () => {
