@@ -10,253 +10,285 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { X, Maximize2 } from "lucide-react"
 
-const ROBOT_SIZE = 56
+const WOLF_SIZE = 56
 const DRAG_THRESHOLD = 5
-const STORAGE_KEY = "fitmanager-ai-robot-pos"
+const STORAGE_KEY = "fitmanager-ai-wolf-pos"
 
-// ===== Mode FITNESS : après 15s d'inactivité le coach s'entraîne (1x → 3x) =====
-const FITNESS_IDLE_MS = 15000
-const FITNESS_SCALE = 3
-const FITNESS_MARGIN = 60
+const INACTIVITY_MS = 15000
+const WOLF_SCALE = 3
+const WOLF_MARGIN = 60
 const GROW_MS = 1150
 const DRINK_MS = 2400
 const REST_MS = 1600
 
-type FitPhase = "normal" | "growing" | "fitness" | "water" | "resting"
-type FitExercise = "none" | "curl" | "bar" | "rest" | "water"
+type WolfPhase = "normal" | "growing" | "training" | "drinking" | "resting"
+type WolfExercise = "none" | "curl" | "bar" | "rest" | "water"
 
-interface RobotPos {
-  x: number
-  y: number
-}
+interface Pos { x: number; y: number }
 
-function clampPos(p: RobotPos): RobotPos {
+function clampPos(p: Pos): Pos {
   const vw = window.innerWidth
   const vh = window.innerHeight
   return {
-    x: Math.min(Math.max(0, p.x), Math.max(0, vw - ROBOT_SIZE)),
-    y: Math.min(Math.max(0, p.y), Math.max(0, vh - ROBOT_SIZE)),
+    x: Math.min(Math.max(0, p.x), Math.max(0, vw - WOLF_SIZE)),
+    y: Math.min(Math.max(0, p.y), Math.max(0, vh - WOLF_SIZE)),
   }
 }
 
-// En mode fitness le robot est agrandi à 3x (origine centre) : on garde le
-// visuel entier dans le viewport pour ne jamais cacher d'éléments d'interface.
-function fitClampPos(p: RobotPos): RobotPos {
+function fitClampPos(p: Pos): Pos {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const half = Math.round((ROBOT_SIZE * (FITNESS_SCALE - 1)) / 2)
-  const minX = FITNESS_MARGIN + half
-  const minY = FITNESS_MARGIN + half
-  const maxX = Math.max(minX, vw - FITNESS_MARGIN - half - ROBOT_SIZE)
-  const maxY = Math.max(minY, vh - FITNESS_MARGIN - half - ROBOT_SIZE)
+  const half = Math.round((WOLF_SIZE * (WOLF_SCALE - 1)) / 2)
+  const minX = WOLF_MARGIN + half
+  const minY = WOLF_MARGIN + half
+  const maxX = Math.max(minX, vw - WOLF_MARGIN - half - WOLF_SIZE)
+  const maxY = Math.max(minY, vh - WOLF_MARGIN - half - WOLF_SIZE)
   return { x: Math.min(Math.max(minX, p.x), maxX), y: Math.min(Math.max(minY, p.y), maxY) }
 }
 
-function defaultPos(): RobotPos {
+function defaultPos(): Pos {
   return {
-    x: Math.max(0, window.innerWidth - ROBOT_SIZE - 24),
-    y: Math.max(0, window.innerHeight - ROBOT_SIZE - 24),
+    x: Math.max(0, window.innerWidth - WOLF_SIZE - 24),
+    y: Math.max(0, window.innerHeight - WOLF_SIZE - 24),
   }
 }
 
-function loadPos(): RobotPos {
+function loadPos(): Pos {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const p = JSON.parse(raw) as RobotPos
+      const p = JSON.parse(raw) as Pos
       if (typeof p?.x === "number" && typeof p?.y === "number") return clampPos(p)
     }
-  } catch {
-    /* localStorage indisponible : position par défaut */
-  }
+  } catch { /* */ }
   return defaultPos()
 }
 
-export function AiFloatingRobot() {
+export function AiFloatingWolf() {
   const t = useT()
   const { isAuthenticated } = useAuth()
   const { isOnline } = useNetworkStatus()
   const { loading, panelOpen: open, togglePanel, closePanel } = useAiChat()
-  const [pos, setPos] = useState<RobotPos>(loadPos)
+  const [pos, setPos] = useState<Pos>(loadPos)
   const [dragging, setDragging] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dragRef = useRef({ startX: 0, startY: 0, startPosX: 0, startPosY: 0, moved: false })
   const armedRef = useRef(false)
-  const latestPos = useRef<RobotPos>({ x: 0, y: 0 })
+  const latestPos = useRef<Pos>({ x: 0, y: 0 })
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Wander (mouvement auto)
-  const wanderTarget = useRef<RobotPos | null>(null)
+  // Wander
+  const wanderTarget = useRef<Pos | null>(null)
   const wanderRaf = useRef<number | null>(null)
   const wanderTimer = useRef<number | null>(null)
   const lastInteraction = useRef<"mouse" | "wander">("mouse")
   const mouseActive = useRef(false)
   const mouseActiveTimer = useRef<number | null>(null)
 
-  // ===== Mode FITNESS (15s d'inactivité → 3x + exercices) =====
-  const [fitActive, setFitActive] = useState(false)
-  const [fitEx, setFitEx] = useState<FitExercise>("none")
-  const fitPhase = useRef<FitPhase>("normal")
-  const fitActiveRef = useRef(false)
+  // Wolf state machine
+  const [wolfActive, setWolfActive] = useState(false)
+  const [wolfEx, setWolfEx] = useState<WolfExercise>("none")
+  const [wolfBubble, setWolfBubble] = useState<string | null>(null)
+  const [eyeScale, setEyeScale] = useState(1)
+  const [headOffset, setHeadOffset] = useState({ x: 0, y: 0 })
+  const wolfPhase = useRef<WolfPhase>("normal")
+  const wolfActiveRef = useRef(false)
   const openRef = useRef(open)
   const draggingRef = useRef(dragging)
   const onlineRef = useRef(isOnline)
   const reducedMotion = useRef(false)
-  const posRef = useRef<RobotPos>(pos)
+  const posRef = useRef<Pos>(pos)
   const idleTimer = useRef<number | null>(null)
-  const fitPhaseTimer = useRef<number | null>(null)
-  const fitCycleTimer = useRef<number | null>(null)
-  const fitRaf = useRef<number | null>(null)
-  const fitTarget = useRef<RobotPos | null>(null)
-  const fitHomePos = useRef<RobotPos | null>(null)
+  const phaseTimer = useRef<number | null>(null)
+  const cycleTimer = useRef<number | null>(null)
+  const roamRaf = useRef<number | null>(null)
+  const roamTarget = useRef<Pos | null>(null)
+  const homePos = useRef<Pos | null>(null)
+  const blinkTimer = useRef<number | null>(null)
+  const headRaf = useRef<number | null>(null)
+  const headTarget = useRef({ x: 0, y: 0 })
+  const headCurrent = useRef({ x: 0, y: 0 })
 
   const currentModule = location.pathname.split("/")[1] || "dashboard"
 
-  // Ferme le panneau lors d'un changement de module (le robot reste visible)
-  useEffect(() => {
-    closePanel()
-  }, [currentModule, closePanel])
+  useEffect(() => { closePanel() }, [currentModule, closePanel])
 
-  // Recalcule la position si la fenêtre change (le robot ne sort jamais de l'écran)
   useEffect(() => {
     const onResize = () => setPos((p) => clampPos(p))
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
-  // Miroirs de state pour les callbacks fitness (stable, sans re-création)
   useEffect(() => { openRef.current = open }, [open])
   useEffect(() => { draggingRef.current = dragging }, [dragging])
   useEffect(() => { onlineRef.current = isOnline }, [isOnline])
   useEffect(() => { posRef.current = pos }, [pos])
-  useEffect(() => { fitActiveRef.current = fitActive }, [fitActive])
+  useEffect(() => { wolfActiveRef.current = wolfActive }, [wolfActive])
 
-  // ===== Mode FITNESS : machine à états (aucune API, aucun timer global) =====
+  // ===== Eye blink =====
+  useEffect(() => {
+    const scheduleBlink = () => {
+      const delay = 2500 + Math.random() * 4000
+      blinkTimer.current = window.setTimeout(() => {
+        setEyeScale(0.05)
+        setTimeout(() => setEyeScale(1), 120 + Math.random() * 80)
+        scheduleBlink()
+      }, delay) as unknown as number
+    }
+    scheduleBlink()
+    return () => { if (blinkTimer.current != null) clearTimeout(blinkTimer.current) }
+  }, [])
+
+  // ===== Head follow mouse =====
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (wolfActiveRef.current || draggingRef.current) return
+      const cx = window.innerWidth / 2
+      const cy = window.innerHeight / 2
+      headTarget.current = {
+        x: ((e.clientX - cx) / cx) * 4,
+        y: ((e.clientY - cy) / cy) * 3,
+      }
+    }
+    const animate = () => {
+      const t = headTarget.current
+      const c = headCurrent.current
+      c.x += (t.x - c.x) * 0.04
+      c.y += (t.y - c.y) * 0.04
+      setHeadOffset({ x: c.x, y: c.y })
+      headRaf.current = requestAnimationFrame(animate)
+    }
+    headRaf.current = requestAnimationFrame(animate)
+    window.addEventListener("pointermove", onMove, { passive: true })
+    return () => {
+      window.removeEventListener("pointermove", onMove)
+      if (headRaf.current != null) cancelAnimationFrame(headRaf.current)
+    }
+  }, [])
+
+  // ===== Status bubbles =====
+  useEffect(() => {
+    if (wolfPhase.current === "normal" && !wolfActive) {
+      setWolfBubble(t("aiAssistant.wolfBubbleIdle") || "Salut 👋")
+    }
+  }, [wolfActive, t])
+
+  useEffect(() => {
+    if (wolfEx === "curl" || wolfEx === "bar") {
+      setWolfBubble(t("aiAssistant.wolfBubbleTraining") || "MODE ENTRAÎNEMENT 💪")
+    } else if (wolfEx === "water") {
+      setWolfBubble(t("aiAssistant.wolfBubbleDrinking") || "HYDRATATION 💧")
+    } else if (wolfEx === "rest") {
+      setWolfBubble(t("aiAssistant.wolfBubbleResting") || "PETITE PAUSE 😎")
+    }
+  }, [wolfEx, t])
+
+  // ===== Fitness state machine =====
   const clearFitTimers = () => {
-    if (fitPhaseTimer.current != null) { clearTimeout(fitPhaseTimer.current); fitPhaseTimer.current = null }
-    if (fitCycleTimer.current != null) { clearTimeout(fitCycleTimer.current); fitCycleTimer.current = null }
-    if (fitRaf.current != null) { cancelAnimationFrame(fitRaf.current); fitRaf.current = null }
-    fitTarget.current = null
+    if (phaseTimer.current != null) { clearTimeout(phaseTimer.current); phaseTimer.current = null }
+    if (cycleTimer.current != null) { clearTimeout(cycleTimer.current); cycleTimer.current = null }
+    if (roamRaf.current != null) { cancelAnimationFrame(roamRaf.current); roamRaf.current = null }
+    roamTarget.current = null
   }
 
-  // Le robot rove dans le viewport (bornes fitness) pendant l'entraînement
   const startRoam = () => {
     const pick = () => {
-      fitTarget.current = fitClampPos({ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight })
+      roamTarget.current = fitClampPos({ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight })
     }
     pick()
     const animate = () => {
-      const target = fitTarget.current
-      if (!target) { fitRaf.current = null; return }
+      const target = roamTarget.current
+      if (!target) { roamRaf.current = null; return }
       setPos((prev) => {
         const dx = target.x - prev.x
         const dy = target.y - prev.y
         const dist = Math.hypot(dx, dy)
-        if (dist < 2) { fitTarget.current = null; return prev }
-        const speed = 2.2
-        return { x: prev.x + (dx / dist) * speed, y: prev.y + (dy / dist) * speed }
+        if (dist < 2) { roamTarget.current = null; return prev }
+        return { x: prev.x + (dx / dist) * 2.2, y: prev.y + (dy / dist) * 2.2 }
       })
-      fitRaf.current = requestAnimationFrame(animate)
+      roamRaf.current = requestAnimationFrame(animate)
     }
-    fitRaf.current = requestAnimationFrame(animate)
+    roamRaf.current = requestAnimationFrame(animate)
   }
 
-  // Cycle d'exercices : curl ↔ bar avec une courte pause entre chaque
   const runExerciseCycle = () => {
-    if (fitPhase.current !== "fitness") return
-    setFitEx((ex) => (ex === "curl" ? "bar" : "curl"))
-    fitCycleTimer.current = window.setTimeout(() => {
-      setFitEx("rest")
-      fitCycleTimer.current = window.setTimeout(runExerciseCycle, 650) as unknown as number
+    if (wolfPhase.current !== "training") return
+    setWolfEx((ex) => (ex === "curl" ? "bar" : "curl"))
+    cycleTimer.current = window.setTimeout(() => {
+      setWolfEx("rest")
+      cycleTimer.current = window.setTimeout(runExerciseCycle, 650) as unknown as number
     }, 2400) as unknown as number
   }
 
-  // Retour progressif : eau (2.4s) → repos (1.6s) → taille 1x + retour à la position de départ
   const startReturn = () => {
-    if (fitPhase.current === "normal" || fitPhase.current === "water" || fitPhase.current === "resting") return
+    if (wolfPhase.current === "normal" || wolfPhase.current === "drinking" || wolfPhase.current === "resting") return
     clearFitTimers()
-    fitPhase.current = "water"
-    setFitEx("water")
-    fitPhaseTimer.current = window.setTimeout(() => {
-      fitPhase.current = "resting"
-      setFitEx("rest")
-      fitPhaseTimer.current = window.setTimeout(() => {
-        fitPhase.current = "normal"
-        setFitActive(false)
-        setFitEx("none")
+    wolfPhase.current = "drinking"
+    setWolfEx("water")
+    phaseTimer.current = window.setTimeout(() => {
+      wolfPhase.current = "resting"
+      setWolfEx("rest")
+      phaseTimer.current = window.setTimeout(() => {
+        wolfPhase.current = "normal"
+        setWolfActive(false)
+        setWolfEx("none")
+        setWolfBubble(null)
         rearmIdle()
-        const home = fitHomePos.current
+        const home = homePos.current
         const animate = () => {
-          if (!home) { fitRaf.current = null; return }
+          if (!home) { roamRaf.current = null; return }
           setPos((prev) => {
             const dx = home.x - prev.x
             const dy = home.y - prev.y
             const dist = Math.hypot(dx, dy)
-            if (dist < 2) { fitRaf.current = null; return home }
-            const speed = 3
-            return { x: prev.x + (dx / dist) * speed, y: prev.y + (dy / dist) * speed }
+            if (dist < 2) { roamRaf.current = null; return home }
+            return { x: prev.x + (dx / dist) * 3, y: prev.y + (dy / dist) * 3 }
           })
-          if (fitRaf.current != null) fitRaf.current = requestAnimationFrame(animate)
+          if (roamRaf.current != null) roamRaf.current = requestAnimationFrame(animate)
         }
-        fitRaf.current = requestAnimationFrame(animate)
+        roamRaf.current = requestAnimationFrame(animate)
       }, REST_MS)
     }, DRINK_MS)
   }
 
-  // Démarre l'entraînement après 15s d'inactivité (gardes en lecture via refs)
   const enterFitness = () => {
-    if (fitActiveRef.current) return
+    if (wolfActiveRef.current) return
     if (openRef.current || draggingRef.current || !onlineRef.current || document.hidden) return
     reducedMotion.current = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
     if (reducedMotion.current) return
-    if (fitRaf.current != null) { cancelAnimationFrame(fitRaf.current); fitRaf.current = null }
-    fitHomePos.current = { ...posRef.current }
-    fitPhase.current = "growing"
-    setFitActive(true)
-    setFitEx("none")
-    fitPhaseTimer.current = window.setTimeout(() => {
-      fitPhase.current = "fitness"
+    if (roamRaf.current != null) { cancelAnimationFrame(roamRaf.current); roamRaf.current = null }
+    homePos.current = { ...posRef.current }
+    wolfPhase.current = "growing"
+    setWolfActive(true)
+    setWolfEx("none")
+    phaseTimer.current = window.setTimeout(() => {
+      wolfPhase.current = "training"
       runExerciseCycle()
       startRoam()
     }, GROW_MS)
   }
 
-  // Réarme le minuteur d'inactivité (un seul timer, reset à chaque interaction)
   const rearmIdle = () => {
     if (idleTimer.current != null) { clearTimeout(idleTimer.current); idleTimer.current = null }
-    idleTimer.current = window.setTimeout(enterFitness, FITNESS_IDLE_MS) as unknown as number
+    idleTimer.current = window.setTimeout(enterFitness, INACTIVITY_MS) as unknown as number
   }
 
-  // Timer d'inactivité + détection d'interaction pour ramener le robot
   useEffect(() => {
     reducedMotion.current = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false
-    const clearIdle = () => {
-      if (idleTimer.current != null) { clearTimeout(idleTimer.current); idleTimer.current = null }
-    }
-    const canFit = () =>
-      !openRef.current && !draggingRef.current && onlineRef.current && !reducedMotion.current && !document.hidden
-
+    const clearIdle = () => { if (idleTimer.current != null) { clearTimeout(idleTimer.current); idleTimer.current = null } }
+    const canFit = () => !openRef.current && !draggingRef.current && onlineRef.current && !reducedMotion.current && !document.hidden
     const onInteraction = () => {
-      if (fitPhase.current !== "normal") { startReturn(); return }
+      if (wolfPhase.current !== "normal") { startReturn(); return }
       if (canFit()) rearmIdle()
     }
     const onVisibility = () => {
-      if (document.hidden) {
-        clearIdle()
-      } else {
-        if (fitPhase.current !== "normal") startReturn()
-        else if (canFit()) rearmIdle()
-      }
+      if (document.hidden) clearIdle()
+      else if (wolfPhase.current !== "normal") startReturn()
+      else if (canFit()) rearmIdle()
     }
-
-    if (!canFit()) {
-      clearIdle()
-      if (fitPhase.current !== "normal" && (openRef.current || !onlineRef.current)) startReturn()
-    } else if (fitPhase.current === "normal") {
-      rearmIdle()
-    }
-
+    if (!canFit()) { clearIdle(); if (wolfPhase.current !== "normal" && (openRef.current || !onlineRef.current)) startReturn() }
+    else if (wolfPhase.current === "normal") rearmIdle()
     window.addEventListener("pointermove", onInteraction, { passive: true })
     window.addEventListener("pointerdown", onInteraction, { passive: true })
     window.addEventListener("keydown", onInteraction, { passive: true })
@@ -272,37 +304,28 @@ export function AiFloatingRobot() {
       window.removeEventListener("touchstart", onInteraction)
       document.removeEventListener("visibilitychange", onVisibility)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, dragging, isOnline])
 
-  // Nettoyage complet au démontage
   useEffect(() => {
-    return () => {
-      if (idleTimer.current != null) clearTimeout(idleTimer.current)
-      clearFitTimers()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { if (idleTimer.current != null) clearTimeout(idleTimer.current); clearFitTimers() }
   }, [])
 
-  // Wander : mouvement auto quand pas de drag, pas de panneau ouvert, en ligne
+  // Wander
   useEffect(() => {
-    if (dragging || open || !isOnline || fitActive) {
+    if (dragging || open || !isOnline || wolfActive) {
       if (wanderRaf.current != null) { cancelAnimationFrame(wanderRaf.current); wanderRaf.current = null }
       if (wanderTimer.current != null) { clearTimeout(wanderTimer.current); wanderTimer.current = null }
       return
     }
-
     const pickTarget = () => {
-      const margin = ROBOT_SIZE + 20
-      const target = {
+      const margin = WOLF_SIZE + 20
+      wanderTarget.current = {
         x: margin + Math.random() * (window.innerWidth - margin * 2),
         y: margin + Math.random() * (window.innerHeight - margin * 2),
       }
-      wanderTarget.current = target
       lastInteraction.current = "wander"
       scheduleNext()
     }
-
     const animate = () => {
       const target = wanderTarget.current
       if (!target) { wanderRaf.current = null; return }
@@ -310,33 +333,22 @@ export function AiFloatingRobot() {
         const dx = target.x - prev.x
         const dy = target.y - prev.y
         const dist = Math.hypot(dx, dy)
-        if (dist < 2) {
-          wanderTarget.current = null
-          return target
-        }
-        const speed = 1.2
-        const nx = prev.x + (dx / dist) * speed
-        const ny = prev.y + (dy / dist) * speed
-        return { x: nx, y: ny }
+        if (dist < 2) { wanderTarget.current = null; return target }
+        return { x: prev.x + (dx / dist) * 1.2, y: prev.y + (dy / dist) * 1.2 }
       })
       wanderRaf.current = requestAnimationFrame(animate)
     }
-
     const scheduleNext = () => {
       if (wanderTimer.current != null) clearTimeout(wanderTimer.current)
       wanderTimer.current = window.setTimeout(pickTarget, 4000 + Math.random() * 4000) as unknown as number
     }
-
-    // Démarrer après un délai
     scheduleNext()
-
     return () => {
       if (wanderRaf.current != null) { cancelAnimationFrame(wanderRaf.current); wanderRaf.current = null }
       if (wanderTimer.current != null) { clearTimeout(wanderTimer.current); wanderTimer.current = null }
     }
-  }, [dragging, open, isOnline, fitActive])
+  }, [dragging, open, isOnline, wolfActive])
 
-  // Sauvegarde la position pendant le wander
   useEffect(() => {
     if (lastInteraction.current !== "wander") return
     const id = setInterval(() => {
@@ -345,9 +357,8 @@ export function AiFloatingRobot() {
     return () => clearInterval(id)
   }, [pos])
 
-  // Suivi souris pour le timer d'inactivité (plus de SVG eyes)
   useEffect(() => {
-    const onPointerMove = (e: PointerEvent) => {
+    const onPointerMove = () => {
       mouseActive.current = true
       lastInteraction.current = "mouse"
       if (mouseActiveTimer.current) clearTimeout(mouseActiveTimer.current)
@@ -362,11 +373,7 @@ export function AiFloatingRobot() {
 
   if (!isAuthenticated) return null
 
-  const orbState: "idle" | "thinking" | "responding" | "offline" = !isOnline
-    ? "offline"
-    : loading
-      ? "thinking"
-      : "idle"
+  const orbState: "idle" | "thinking" | "responding" | "offline" = !isOnline ? "offline" : loading ? "thinking" : "idle"
 
   const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     armedRef.current = true
@@ -395,11 +402,7 @@ export function AiFloatingRobot() {
       latestPos.current = final
       setPos(final)
       closePanel()
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(final))
-      } catch {
-        /* ignore */
-      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(final)) } catch { /* */ }
     } else if (armedRef.current) {
       togglePanel()
     }
@@ -409,25 +412,22 @@ export function AiFloatingRobot() {
   }
 
   const onPointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const d = dragRef.current
-    if (d.moved) {
+    if (dragRef.current.moved) {
       closePanel()
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(latestPos.current))
-      } catch {
-        /* ignore */
-      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(latestPos.current)) } catch { /* */ }
     }
     armedRef.current = false
     setDragging(false)
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
-  const onClick = () => {
-    return
-  }
+  const onClick = () => { return }
 
   const stateClass = orbState === "offline" ? " is-offline" : orbState === "thinking" ? " is-thinking" : ""
+  const isTraining = wolfEx === "curl" || wolfEx === "bar"
+  const isDrinking = wolfEx === "water"
+  const isResting = wolfEx === "rest"
+  const breathingClass = !wolfActive ? " is-breathing" : ""
 
   return (
     <>
@@ -436,7 +436,7 @@ export function AiFloatingRobot() {
       <button
         ref={buttonRef}
         type="button"
-        className={`fitmanager-ai-floating-button${stateClass}${dragging ? " is-dragging" : ""}${fitActive ? " is-fitness-mode" : ""}`}
+        className={`fitmanager-ai-floating-button${stateClass}${dragging ? " is-dragging" : ""}${wolfActive ? " is-wolf-active" : ""}`}
         style={{ left: pos.x, top: pos.y }}
         aria-label={t("aiAssistant.openAssistant")}
         title={t("aiAssistant.openAssistant")}
@@ -446,20 +446,66 @@ export function AiFloatingRobot() {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        <span className="fitmanager-ai-robot-scope" style={{ transform: fitActive ? `scale(${FITNESS_SCALE})` : "scale(1)" }}>
-          <img
-            src="/Coach QLF AI.png"
-            alt="Coach QLF AI"
-            className={`fitmanager-ai-coach-img${fitActive ? " is-exercising" : ""}`}
-            draggable={false}
-          />
+        <span
+          className="fitmanager-ai-wolf-scope"
+          style={{ transform: wolfActive ? `scale(${WOLF_SCALE})` : "scale(1)" }}
+        >
+          {/* Wolf body */}
+          <span
+            className={`fitmanager-ai-wolf-body${breathingClass}${isTraining ? " is-training" : ""}${isDrinking ? " is-drinking" : ""}${isResting ? " is-resting" : ""}`}
+            style={{
+              transform: `translate(${headOffset.x}px, ${headOffset.y}px)`,
+            }}
+          >
+            <img
+              src="/assistant/wolf.png"
+              alt="Wolf QLF GYM"
+              className={`fitmanager-ai-wolf-img${wolfActive ? " is-exercising" : ""}`}
+              draggable={false}
+            />
+            {/* Eyes overlay — blink via scaleY */}
+            <span
+              className="fitmanager-ai-wolf-eyes"
+              style={{ transform: `scaleY(${eyeScale}) translate(${headOffset.x * 0.5}px, ${headOffset.y * 0.3}px)` }}
+            />
+          </span>
+
+          {/* Dumbbells — visible during training */}
+          {isTraining && (
+            <>
+              <span className="fitmanager-ai-wolf-dumbbell fitmanager-ai-wolf-dumbbell--left">
+                <span className="fitmanager-ai-db-plate fitmanager-ai-db-plate--dark" />
+                <span className="fitmanager-ai-db-shaft" />
+                <span className="fitmanager-ai-db-plate fitmanager-ai-db-plate--blue" />
+              </span>
+              <span className="fitmanager-ai-wolf-dumbbell fitmanager-ai-wolf-dumbbell--right">
+                <span className="fitmanager-ai-db-plate fitmanager-ai-db-plate--blue" />
+                <span className="fitmanager-ai-db-shaft" />
+                <span className="fitmanager-ai-db-plate fitmanager-ai-db-plate--dark" />
+              </span>
+            </>
+          )}
+
+          {/* Shaker — visible during drinking */}
+          {isDrinking && (
+            <span className="fitmanager-ai-wolf-shaker">
+              <span className="fitmanager-ai-shaker-lid" />
+              <span className="fitmanager-ai-shaker-body" />
+            </span>
+          )}
         </span>
+
+        {/* Status bubble */}
+        {wolfBubble && (
+          <span className={`fitmanager-ai-wolf-bubble${wolfActive ? " is-visible" : ""}`}>
+            {wolfBubble}
+          </span>
+        )}
       </button>
     </>
   )
 }
 
-// Le panneau (lourd : 9 requêtes) n'est monté que lorsqu'il est ouvert.
 function AiFloatingPanel({ onClose, onExpand }: { onClose: () => void; onExpand: () => void }) {
   const t = useT()
   const { organization } = useAuth()
@@ -467,11 +513,7 @@ function AiFloatingPanel({ onClose, onExpand }: { onClose: () => void; onExpand:
   const { loading } = useAiChat()
   const { data, isLoading } = useLazyAssistantData()
 
-  const orbState: "idle" | "thinking" | "responding" | "offline" = !isOnline
-    ? "offline"
-    : loading
-      ? "thinking"
-      : "idle"
+  const orbState: "idle" | "thinking" | "responding" | "offline" = !isOnline ? "offline" : loading ? "thinking" : "idle"
 
   return (
     <div className="fitmanager-ai-panel">
@@ -479,7 +521,7 @@ function AiFloatingPanel({ onClose, onExpand }: { onClose: () => void; onExpand:
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="fitmanager-ai-panel__orb-mini">
-              <img src="/Coach QLF AI.png" alt="" className="fitmanager-ai-coach-mini" draggable={false} />
+              <img src="/assistant/wolf.png" alt="" className="fitmanager-ai-wolf-mini" draggable={false} />
             </span>
             <div>
               <p className="text-sm font-semibold leading-tight">{t("aiAssistant.chatTitle")}</p>
@@ -508,7 +550,6 @@ function AiFloatingPanel({ onClose, onExpand }: { onClose: () => void; onExpand:
   )
 }
 
-// Les données assistant (9 queries) ne sont chargées que pour ce panneau.
 function useLazyAssistantData() {
   const { organization } = useAuth()
   const orgId = organization?.id

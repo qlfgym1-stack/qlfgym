@@ -1200,6 +1200,10 @@ const ar = {
     chatWelcome: "مرحباً، أنا مساعدك الذكي. اسألني أي شيء عن ناديك: الإيرادات، المنتجات، الاشتراكات، ساعات الذروة، التوقعات…",
     chatThinking: "المساعد يفكر…",
     chatPlaceholder: "مثال: كيف أزيد الإيرادات بنسبة 20%؟",
+    wolfBubbleIdle: "مرحبا 👋",
+    wolfBubbleTraining: "وضع التمرين 💪",
+    wolfBubbleDrinking: "ترطيب 💧",
+    wolfBubbleResting: "استراحة قصيرة 😎",
   },
   memberInsights: {
     title: "تحليلات الأعضاء",

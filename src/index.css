@@ -224,7 +224,7 @@
   }
 }
 
-/* ===== Robot IA flottant ===== */
+/* ===== Wolf Assistant IA flottant ===== */
 .fitmanager-ai-floating-button {
   position: fixed;
   z-index: 60;
@@ -239,7 +239,7 @@
   cursor: grab;
   touch-action: none;
   will-change: transform, left, top;
-  animation: fitmanager-ai-float 3.6s ease-in-out infinite;
+  animation: fitmanager-ai-wolf-float 3.6s ease-in-out infinite;
 }
 .fitmanager-ai-floating-button:focus-visible {
   outline: 2px solid rgba(239, 68, 68, 0.6);
@@ -250,7 +250,7 @@
   cursor: grabbing;
   animation-play-state: paused;
 }
-.fitmanager-ai-floating-button.is-dragging .fitmanager-ai-coach-img {
+.fitmanager-ai-floating-button.is-dragging .fitmanager-ai-wolf-img {
   animation-play-state: paused;
 }
 
@@ -261,40 +261,94 @@
   .fitmanager-ai-floating-button { width: 56px; height: 56px; }
 }
 
-@keyframes fitmanager-ai-float {
+@keyframes fitmanager-ai-wolf-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
 
-/* Coach QLF AI image : glow rouge+bleu */
-.fitmanager-ai-coach-img {
+/* Wolf scope (scale container) */
+.fitmanager-ai-wolf-scope {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  transition: transform 1.15s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+  position: relative;
+}
+
+/* Wolf body — breathing + head follow */
+.fitmanager-ai-wolf-body {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: transform 0.15s ease-out;
+}
+.fitmanager-ai-wolf-body.is-breathing {
+  animation: fitmanager-ai-wolf-breathe 4s ease-in-out infinite;
+}
+.fitmanager-ai-wolf-body.is-training {
+  animation: fitmanager-ai-wolf-curl 0.85s ease-in-out infinite;
+}
+.fitmanager-ai-wolf-body.is-drinking {
+  animation: fitmanager-ai-wolf-drink 1.4s ease-in-out infinite;
+}
+.fitmanager-ai-wolf-body.is-resting {
+  animation: fitmanager-ai-wolf-rest 3s ease-in-out infinite;
+}
+
+@keyframes fitmanager-ai-wolf-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.008); }
+}
+@keyframes fitmanager-ai-wolf-curl {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  25% { transform: rotate(-2deg) translateY(-3px); }
+  50% { transform: rotate(0deg) translateY(-1px); }
+  75% { transform: rotate(2deg) translateY(-3px); }
+}
+@keyframes fitmanager-ai-wolf-drink {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  30%, 70% { transform: rotate(-8deg) translateY(-2px); }
+}
+@keyframes fitmanager-ai-wolf-rest {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(1px) scale(0.995); }
+}
+
+/* Wolf image */
+.fitmanager-ai-wolf-img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
   border-radius: 50%;
-  filter: drop-shadow(0 4px 14px rgba(239, 68, 68, 0.3)) drop-shadow(0 2px 10px rgba(59, 130, 246, 0.35));
+  filter: drop-shadow(0 4px 14px rgba(59, 130, 246, 0.3)) drop-shadow(0 2px 10px rgba(37, 99, 235, 0.35));
   transition: filter 0.3s ease;
   position: relative;
 }
-/* Clignement des yeux : un bandau sombre qui s'ouvre/ferme sur la zone des yeux */
-.fitmanager-ai-coach-img::after {
-  content: "";
+.fitmanager-ai-wolf-img.is-exercising {
+  filter: drop-shadow(0 4px 18px rgba(239, 68, 68, 0.4)) drop-shadow(0 2px 14px rgba(59, 130, 246, 0.5));
+}
+
+/* Eyes overlay — dark band that scaleYs to simulate blink */
+.fitmanager-ai-wolf-eyes {
   position: absolute;
-  top: 32%;
-  left: 22%;
-  width: 56%;
-  height: 14%;
+  top: 30%;
+  left: 24%;
+  width: 52%;
+  height: 12%;
   background: rgba(0, 0, 0, 0.85);
   border-radius: 50%;
-  animation: fitmanager-ai-coach-blink 4s ease-in-out infinite;
   pointer-events: none;
+  transform-origin: center center;
+  transition: transform 0.08s ease-out;
+  z-index: 1;
 }
-@keyframes fitmanager-ai-coach-blink {
-  0%, 90%, 100% { transform: scaleY(0); }
-  93%, 97% { transform: scaleY(1); }
-}
-.fitmanager-ai-coach-mini {
+
+/* Mini wolf in panel header */
+.fitmanager-ai-wolf-mini {
   display: block;
   width: 100%;
   height: 100%;
@@ -302,7 +356,7 @@
   border-radius: 50%;
 }
 
-/* Trainée de feu sous le coach */
+/* Trainée de feu sous le loup */
 .fitmanager-ai-floating-button::after {
   content: "";
   position: absolute;
@@ -326,7 +380,6 @@
   filter: blur(1px);
   z-index: -1;
 }
-/* 2ème couche : flamme intérieure plus chaude */
 .fitmanager-ai-floating-button::before {
   content: "";
   position: absolute;
@@ -360,21 +413,16 @@
 }
 
 /* Thinking : pulsation */
-.fitmanager-ai-floating-button.is-thinking .fitmanager-ai-coach-img {
-  animation: fitmanager-ai-robot-pulse 1.2s ease-in-out infinite;
+.fitmanager-ai-floating-button.is-thinking .fitmanager-ai-wolf-img {
+  animation: fitmanager-ai-wolf-pulse 1.2s ease-in-out infinite;
 }
-@keyframes fitmanager-ai-robot-pulse {
-  0%, 100% { filter: drop-shadow(0 4px 14px rgba(239, 68, 68, 0.3)) drop-shadow(0 2px 10px rgba(59, 130, 246, 0.35)); }
-  50% { filter: drop-shadow(0 4px 22px rgba(239, 68, 68, 0.6)) drop-shadow(0 2px 18px rgba(59, 130, 246, 0.65)); }
-}
-
-/* Responding : petite pulsation */
-.fitmanager-ai-floating-button.is-responding .fitmanager-ai-coach-img {
-  animation: fitmanager-ai-robot-pulse 1.6s ease-in-out infinite;
+@keyframes fitmanager-ai-wolf-pulse {
+  0%, 100% { filter: drop-shadow(0 4px 14px rgba(59, 130, 246, 0.3)) drop-shadow(0 2px 10px rgba(37, 99, 235, 0.35)); }
+  50% { filter: drop-shadow(0 4px 22px rgba(59, 130, 246, 0.6)) drop-shadow(0 2px 18px rgba(37, 99, 235, 0.65)); }
 }
 
-/* Offline : coach grisé */
-.fitmanager-ai-floating-button.is-offline .fitmanager-ai-coach-img {
+/* Offline : loup grisé */
+.fitmanager-ai-floating-button.is-offline .fitmanager-ai-wolf-img {
   filter: grayscale(0.9) brightness(0.85);
 }
 .fitmanager-ai-floating-button.is-offline::after {
@@ -382,6 +430,7 @@
   animation: none;
 }
 
+/* Panel */
 .fitmanager-ai-panel {
   position: fixed;
   right: 22px;
@@ -411,8 +460,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fitmanager-ai-floating-button,
-  .fitmanager-ai-coach-img,
-  .fitmanager-ai-robot-scope {
+  .fitmanager-ai-wolf-img,
+  .fitmanager-ai-wolf-scope,
+  .fitmanager-ai-wolf-body,
+  .fitmanager-ai-wolf-eyes {
     animation: none !important;
     transition: none !important;
   }
@@ -426,42 +477,116 @@
   }
 }
 
-/* ===== Mode FITNESS : le coach s'entraîne après 15s d'inactivité (1x → 3x) ===== */
-.fitmanager-ai-robot-scope {
-  display: block;
-  width: 100%;
-  height: 100%;
-  transform-origin: center center;
-  transition: transform 1.15s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
-  position: relative;
-}
-.fitmanager-ai-floating-button.is-fitness-mode {
+/* ===== Wolf mode FITNESS : 15s → 3x ===== */
+.fitmanager-ai-floating-button.is-wolf-active {
   animation-play-state: paused;
 }
-.fitmanager-ai-floating-button.is-fitness-mode .fitmanager-ai-coach-img {
-  animation-play-state: paused;
-  animation: fitmanager-ai-coach-bounce 0.9s ease-in-out infinite;
-}
-.fitmanager-ai-floating-button.is-fitness-mode::after,
-.fitmanager-ai-floating-button.is-fitness-mode::before {
+.fitmanager-ai-floating-button.is-wolf-active::after,
+.fitmanager-ai-floating-button.is-wolf-active::before {
   opacity: 0;
   animation: none;
 }
 
-@keyframes fitmanager-ai-coach-bounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+/* Dumbbells */
+.fitmanager-ai-wolf-dumbbell {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  z-index: 3;
+  animation: fitmanager-ai-db-bob 0.85s ease-in-out infinite;
+}
+.fitmanager-ai-wolf-dumbbell--left {
+  left: -18px;
+  top: 32%;
+}
+.fitmanager-ai-wolf-dumbbell--right {
+  right: -18px;
+  top: 32%;
+  animation-delay: 0.425s;
+}
+.fitmanager-ai-db-plate {
+  width: 14px;
+  height: 6px;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.2);
+}
+.fitmanager-ai-db-plate--dark {
+  background: linear-gradient(180deg, #374151, #111827);
+}
+.fitmanager-ai-db-plate--blue {
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+}
+.fitmanager-ai-db-shaft {
+  width: 3px;
+  height: 12px;
+  background: linear-gradient(90deg, #9ca3af, #e5e7eb, #9ca3af);
+  border-radius: 1px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+@keyframes fitmanager-ai-db-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-5deg); }
 }
 
-/* Coach image : balancement synchronisé pendant exercice */
-.fitmanager-ai-coach-img.is-exercising {
-  animation: fitmanager-ai-coach-sway 0.85s ease-in-out infinite;
+/* Shaker */
+.fitmanager-ai-wolf-shaker {
+  position: absolute;
+  right: -6px;
+  top: 18%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fitmanager-ai-shaker-tilt 1.4s ease-in-out infinite;
 }
-@keyframes fitmanager-ai-coach-sway {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-3deg); }
-  75% { transform: rotate(3deg); }
+.fitmanager-ai-shaker-lid {
+  width: 12px;
+  height: 3px;
+  background: linear-gradient(180deg, #6b7280, #4b5563);
+  border-radius: 2px 2px 0 0;
+}
+.fitmanager-ai-shaker-body {
+  width: 10px;
+  height: 18px;
+  background:
+    repeating-conic-gradient(
+      rgba(255,255,255,0.3) 0% 25%,
+      rgba(59,130,246,0.6) 0% 50%
+    ) 0 0 / 5px 5px,
+    linear-gradient(180deg, #3b82f6, #1d4ed8);
+  border-radius: 0 0 2px 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+@keyframes fitmanager-ai-shaker-tilt {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  30%, 70% { transform: rotate(-25deg) translateY(-6px); }
+}
+
+/* Status bubbles */
+.fitmanager-ai-wolf-bubble {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  border-radius: 10px 10px 10px 2px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 70;
+}
+.fitmanager-ai-wolf-bubble.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* Scrollbar styling */
