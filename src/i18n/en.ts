@@ -731,6 +731,10 @@ const en = {
     change: "Change",
     by: "by",
     noHistory: "No history",
+    detail: "Detail",
+    renewal: "Renewal",
+    dropin: "Drop-in session",
+    product: "Product",
   },
   equipment: {
     title: "Equipment",

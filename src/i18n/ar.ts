@@ -675,6 +675,10 @@ const ar = {
     change: "تغيير",
     by: "من طرف",
     noHistory: "لا يوجد سجل",
+    detail: "التفاصيل",
+    renewal: "تجديد",
+    dropin: "جلسة حرة",
+    product: "منتج",
   },
   equipment: {
     title: "المعدات",

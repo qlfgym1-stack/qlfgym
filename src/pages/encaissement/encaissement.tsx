@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Pagination } from "@/components/ui/pagination"
-import { Loader2, Wallet, Search, Download, Pencil, Trash2, History } from "lucide-react"
+import { Loader2, Wallet, Search, Download, Pencil, Trash2, History, CreditCard, RefreshCw, Ticket, Package } from "lucide-react"
 import { IS_MOCK } from "@/lib/config"
 import { useToast } from "@/components/ui/toast"
 import { useOpenMember } from "@/hooks/useOpenMember"
@@ -29,6 +29,8 @@ import type { PaymentChange, Member } from "@/types/supabase"
 interface EncaissementRow {
   id: string
   type: "subscription" | "pos"
+  detailType: "subscription" | "renewal" | "dropin" | "product"
+  description: string
   amount: number
   date: string
   method: string
@@ -121,34 +123,72 @@ export default function Encaissement() {
       const dateToEnd = new Date(y, m - 1, d + 1)
       const dateToEndStr = `${dateToEnd.getFullYear()}-${String(dateToEnd.getMonth() + 1).padStart(2, "0")}-${String(dateToEnd.getDate()).padStart(2, "0")}`
       const [paymentsRes, posRes] = await Promise.all([
-        supabase.from("payments").select("id, amount, payment_date, payment_method, status, member_id, members(first_name, last_name)").eq("organization_id", orgId).eq("status", "completed").gte("payment_date", dateFrom).lt("payment_date", dateToEndStr).order("payment_date", { ascending: false }),
+        supabase.from("payments").select("id, amount, payment_date, payment_method, status, member_id, member_subscriptions!inner(subscription_types(name)), members(first_name, last_name)").eq("organization_id", orgId).eq("status", "completed").gte("payment_date", dateFrom).lt("payment_date", dateToEndStr).order("payment_date", { ascending: false }),
         supabase.from("pos_transactions").select("id, total, created_at, payment_method, payment_status, member_id, items, members(first_name, last_name)").eq("organization_id", orgId).eq("payment_status", "completed").gte("created_at", dateFrom).lt("created_at", dateToEndStr).order("created_at", { ascending: false }),
       ])
       if (paymentsRes.error) throw paymentsRes.error
       if (posRes.error) throw posRes.error
       const payments = paymentsRes.data
       const pos = posRes.data
-      const subs: EncaissementRow[] = ((payments ?? []) as any[]).map(p => ({
-        id: p.id,
-        type: "subscription" as const,
-        amount: Number(p.amount) || 0,
-        date: p.payment_date,
-        method: p.payment_method,
-        status: p.status,
-        memberId: p.member_id,
-        memberName: p.members ? `${toUpper(p.members.first_name)} ${toUpper(p.members.last_name)}` : "-",
-      }))
-      const posRows: EncaissementRow[] = ((pos ?? []) as any[]).map(p => ({
-        id: p.id,
-        type: "pos" as const,
-        amount: Number(p.total) || 0,
-        date: p.created_at,
-        method: p.payment_method ?? "cash",
-        status: "completed",
-        memberId: p.member_id,
-        memberName: p.members ? `${toUpper(p.members.first_name)} ${toUpper(p.members.last_name)}` : "-",
-        isVirtualSubscription: ((p.items ?? []) as any[]).some((it: any) => it.id?.startsWith?.("__subscription__") || it.id?.startsWith?.("__renewal__")),
-      }))
+      const subs: EncaissementRow[] = ((payments ?? []) as any[]).map(p => {
+        const subName = p.member_subscriptions?.subscription_types?.name ?? null
+        return {
+          id: p.id,
+          type: "subscription" as const,
+          detailType: "subscription" as const,
+          description: subName ?? "-",
+          amount: Number(p.amount) || 0,
+          date: p.payment_date,
+          method: p.payment_method,
+          status: p.status,
+          memberId: p.member_id,
+          memberName: p.members ? `${toUpper(p.members.first_name)} ${toUpper(p.members.last_name)}` : "-",
+        }
+      })
+      const posRows: EncaissementRow[] = ((pos ?? []) as any[]).map(p => {
+        const items = (p.items ?? []) as any[]
+        let detailType: "subscription" | "renewal" | "dropin" | "product" = "product"
+        let description = ""
+        const hasSub = items.some((it: any) => it.id?.startsWith?.("__subscription__"))
+        const hasRenewal = items.some((it: any) => it.id?.startsWith?.("__renewal__"))
+        const hasDropin = items.some((it: any) => it.id?.startsWith?.("__dropin__"))
+        if (hasSub) {
+          detailType = "subscription"
+          const subItem = items.find((it: any) => it.id?.startsWith?.("__subscription__"))
+          description = subItem?.name ?? "Abonnement"
+        } else if (hasRenewal) {
+          detailType = "renewal"
+          const renewItem = items.find((it: any) => it.id?.startsWith?.("__renewal__"))
+          description = renewItem?.name ?? "Renouvellement"
+        } else if (hasDropin) {
+          detailType = "dropin"
+          const dropItem = items.find((it: any) => it.id?.startsWith?.("__dropin__"))
+          description = dropItem?.name ?? "Séance libre"
+        } else {
+          detailType = "product"
+          const physicalItems = items.filter((it: any) => !it.id?.startsWith?.("__"))
+          if (physicalItems.length === 1) {
+            description = physicalItems[0].name ?? "-"
+          } else if (physicalItems.length > 1) {
+            description = physicalItems.map((it: any) => `${it.name}${(it.quantity ?? 1) > 1 ? ` ×${it.quantity}` : ""}`).join(", ")
+          } else {
+            description = "-"
+          }
+        }
+        return {
+          id: p.id,
+          type: "pos" as const,
+          detailType,
+          description,
+          amount: Number(p.total) || 0,
+          date: p.created_at,
+          method: p.payment_method ?? "cash",
+          status: "completed",
+          memberId: p.member_id,
+          memberName: p.members ? `${toUpper(p.members.first_name)} ${toUpper(p.members.last_name)}` : "-",
+          isVirtualSubscription: hasSub || hasRenewal,
+        }
+      })
       const deduped = dedupeRows(subs, posRows)
       return [...deduped].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     },
@@ -179,7 +219,12 @@ export default function Encaissement() {
     if (!rawData) return []
     return rawData.filter((r: EncaissementRow) => {
       if (methodFilter !== "all" && r.method !== methodFilter) return false
-      if (typeFilter !== "all" && r.type !== typeFilter) return false
+      if (typeFilter !== "all") {
+        if (typeFilter === "subscription" && r.detailType !== "subscription") return false
+        if (typeFilter === "renewal" && r.detailType !== "renewal") return false
+        if (typeFilter === "dropin" && r.detailType !== "dropin") return false
+        if (typeFilter === "product" && r.detailType !== "product") return false
+      }
       if (selectedMemberId && r.memberId !== selectedMemberId) return false
       return true
     })
@@ -211,7 +256,8 @@ export default function Encaissement() {
   const handleExport = useCallback(() => {
     const exportData = filtered.map((r: EncaissementRow) => ({
       date: new Date(r.date).toLocaleDateString("fr-FR"),
-      type: r.type === "subscription" ? (t("encaissement.subscription") || "Abonnement") : (t("encaissement.pos") || "Vente POS"),
+      type: r.detailType === "subscription" ? (t("encaissement.subscription") || "Abonnement") : r.detailType === "renewal" ? (t("encaissement.renewal") || "Renouvellement") : r.detailType === "dropin" ? (t("encaissement.dropin") || "Séance libre") : (t("encaissement.product") || "Produit"),
+      detail: r.description,
       member: r.memberName,
       amount: r.amount,
       method: r.method,
@@ -226,6 +272,7 @@ export default function Encaissement() {
     [
       { key: "date", label: t("encaissement.date") || "Date" },
       { key: "type", label: t("encaissement.type") || "Type" },
+      { key: "detail", label: t("encaissement.detail") || "Détail" },
       { key: "member", label: t("pos.member") || "Membre" },
       { key: "amount", label: t("payments.amount") || "Montant" },
       { key: "method", label: t("encaissement.method") || "Moyen" },
@@ -448,7 +495,9 @@ export default function Encaissement() {
                 <SelectContent>
                   <SelectItem value="all">{t("encaissement.allTypes") || "Tous"}</SelectItem>
                   <SelectItem value="subscription">{t("encaissement.subscription") || "Abonnement"}</SelectItem>
-                  <SelectItem value="pos">{t("encaissement.pos") || "Vente POS"}</SelectItem>
+                  <SelectItem value="renewal">{t("encaissement.renewal") || "Renouvellement"}</SelectItem>
+                  <SelectItem value="dropin">{t("encaissement.dropin") || "Séance libre"}</SelectItem>
+                  <SelectItem value="product">{t("encaissement.product") || "Produit"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -473,6 +522,7 @@ export default function Encaissement() {
                       <th className="text-left p-3 font-medium">{t("encaissement.date") || "Date"}</th>
                       <th className="text-left p-3 font-medium">{t("encaissement.type") || "Type"}</th>
                       <th className="text-left p-3 font-medium">{t("pos.member") || "Membre"}</th>
+                      <th className="text-left p-3 font-medium">{t("encaissement.detail") || "Détail"}</th>
                       <th className="text-right p-3 font-medium">{t("payments.amount") || "Montant"}</th>
                       <th className="text-center p-3 font-medium">{t("encaissement.method") || "Moyen"}</th>
                       <th className="text-center p-3 font-medium">{t("encaissement.status") || "Statut"}</th>
@@ -482,11 +532,19 @@ export default function Encaissement() {
                   <tbody>
                     {paginatedData.map(row => (
                       <tr key={`${row.type}-${row.id}`} className="border-b last:border-0 hover:bg-accent/30">
-                        <td className="p-3 whitespace-nowrap">{new Date(row.date).toLocaleDateString("fr-FR")}</td>
                         <td className="p-3 whitespace-nowrap">
-                          <Badge variant={row.type === "subscription" ? "default" : "secondary"}>
-                            {row.type === "subscription" ? (t("encaissement.subscription") || "Abonnement") : (t("encaissement.pos") || "Vente POS")}
-                          </Badge>
+                          {new Date(row.date).toLocaleDateString("fr-FR")}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {row.detailType === "subscription" && <CreditCard className="h-3.5 w-3.5 text-primary" />}
+                            {row.detailType === "renewal" && <RefreshCw className="h-3.5 w-3.5 text-warning" />}
+                            {row.detailType === "dropin" && <Ticket className="h-3.5 w-3.5 text-success" />}
+                            {row.detailType === "product" && <Package className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <Badge variant={row.detailType === "subscription" || row.detailType === "renewal" ? "default" : "secondary"}>
+                              {row.detailType === "subscription" ? (t("encaissement.subscription") || "Abonnement") : row.detailType === "renewal" ? (t("encaissement.renewal") || "Renouvellement") : row.detailType === "dropin" ? (t("encaissement.dropin") || "Séance libre") : (t("encaissement.product") || "Produit")}
+                            </Badge>
+                          </div>
                         </td>
                         <td className="p-3 whitespace-nowrap">
                           {row.memberId ? (
@@ -499,6 +557,9 @@ export default function Encaissement() {
                               {row.memberName}
                             </button>
                           ) : row.memberName}
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-xs text-muted-foreground max-w-[200px] truncate" title={row.description}>
+                          {row.description}
                         </td>
                         <td className="p-3 text-right whitespace-nowrap font-medium tabular-nums">{formatCurrency(row.amount)}</td>
                         <td className="p-3 text-center whitespace-nowrap">{methodBadge(row.method)}</td>

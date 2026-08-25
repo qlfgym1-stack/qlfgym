@@ -738,6 +738,10 @@ const fr = {
     change: "Modification",
     by: "par",
     noHistory: "Aucun historique",
+    detail: "Détail",
+    renewal: "Renouvellement",
+    dropin: "Séance libre",
+    product: "Produit",
   },
   profile: {
     title: "Profil",
