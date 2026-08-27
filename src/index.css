@@ -252,3 +252,284 @@ html {
   scrollbar-width: thin;
   scrollbar-color: var(--muted-foreground) transparent;
 }
+
+/* ==========================================================================
+   Robot IA flottant — premium rouge + bleu, fond transparent
+   ========================================================================== */
+.fitmanager-ai-floating-button {
+  position: fixed;
+  width: 62px;
+  height: 62px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  overflow: visible;
+  cursor: grab;
+  z-index: 60;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  --eye-x: 0;
+  --eye-y: 0;
+  --eye-blink: 1;
+  --fit-alpha: 3;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.35)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
+  transition: filter 0.25s ease;
+}
+
+.fitmanager-ai-floating-button:not(.is-large):not(.is-dragging) {
+  animation: fitmanager-ai-float 5.5s ease-in-out infinite;
+}
+
+.fitmanager-ai-floating-button:hover {
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.55)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.35)) drop-shadow(0 3px 8px rgba(0, 0, 0, 0.28));
+}
+
+.fitmanager-ai-floating-button.is-dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.6)) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes fitmanager-ai-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-9px); }
+}
+
+/* Échelle 1x → 3x (transition fluide) ; rotation pilotée par rAF sur .spin */
+.fitmanager-ai-robot-scope {
+  display: block;
+  width: 62px;
+  height: 62px;
+  transition: transform 1.15s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.fitmanager-ai-robot-spin {
+  display: block;
+  width: 62px;
+  height: 62px;
+  will-change: transform;
+}
+
+.fitmanager-ai-robot {
+  width: 62px;
+  height: 68px;
+  transform-origin: center center;
+  overflow: visible;
+}
+
+/* ==== États ==== */
+.fitmanager-ai-floating-button.is-offline .fitmanager-ai-robot {
+  filter: grayscale(0.9) opacity(0.75);
+}
+
+.fitmanager-ai-floating-button.is-thinking .fitmanager-ai-robot__eye-glow {
+  animation: fitmanager-ai-think 1s ease-in-out infinite;
+}
+
+.fitmanager-ai-floating-button.is-thinking .fitmanager-ai-robot__antenna {
+  animation: fitmanager-ai-think 0.8s ease-in-out infinite;
+}
+
+/* OBSERVE : regard balayant + micro-inclinaison */
+.fitmanager-ai-floating-button.is-observing .fitmanager-ai-eyes {
+  animation: fitmanager-ai-scan 0.95s ease;
+}
+
+@keyframes fitmanager-ai-scan {
+  0% { transform: none; }
+  30% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  100% { transform: none; }
+}
+
+/* GRANDIT : pulsation lumineuse */
+.fitmanager-ai-floating-button.is-growing .fitmanager-ai-robot {
+  animation: fitmanager-ai-grow 1.15s ease;
+}
+
+@keyframes fitmanager-ai-grow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+/* TRAINING : bras qui balancent + micro-tremblement du corps */
+.fitmanager-ai-robot__body.is-training .fitmanager-ai-robot__arm-swing-l {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: fitmanager-ai-arm-l 0.55s ease-in-out infinite alternate;
+}
+
+.fitmanager-ai-robot__body.is-training .fitmanager-ai-robot__arm-swing-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: fitmanager-ai-arm-r 0.65s ease-in-out infinite alternate;
+}
+
+@keyframes fitmanager-ai-arm-l {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(22deg); }
+}
+
+@keyframes fitmanager-ai-arm-r {
+  from { transform: rotate(10deg); }
+  to { transform: rotate(-14deg); }
+}
+
+.fitmanager-ai-floating-button.is-training .fitmanager-ai-robot__body {
+  animation: fitmanager-ai-shake 2.4s ease-in-out infinite;
+}
+
+@keyframes fitmanager-ai-shake {
+  0%, 100% { transform: translateY(0px); }
+  45% { transform: translateY(1.6px); }
+  65% { transform: translateY(-1.6px); }
+}
+
+/* BOIRE : bouteille qui bouge + tête qui hoche */
+.fitmanager-ai-floating-button.is-drinking .fitmanager-ai-robot__bottle {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: fitmanager-ai-drink 0.7s ease-in-out infinite;
+}
+
+.fitmanager-ai-floating-button.is-drinking .fitmanager-ai-robot__body {
+  animation: fitmanager-ai-nod 1.4s ease-in-out infinite;
+}
+
+@keyframes fitmanager-ai-drink {
+  0%, 100% { transform: rotate(12deg) translateY(0); }
+  50% { transform: rotate(20deg) translateY(2px); }
+}
+
+@keyframes fitmanager-ai-nod {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(2px); }
+}
+
+/* REPOS : respiration lente */
+.fitmanager-ai-floating-button.is-resting .fitmanager-ai-robot__body {
+  animation: fitmanager-ai-breathe 2.2s ease-in-out infinite;
+}
+
+@keyframes fitmanager-ai-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* ==== Yeux : suivi souris + clignement ==== */
+.fitmanager-ai-eyes {
+  transform-box: fill-box;
+}
+
+.fitmanager-ai-robot__eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: translate(calc(var(--eye-x) * 0.16), calc(var(--eye-y) * 0.16)) scaleY(var(--eye-blink, 1));
+  transition: transform 0.11s ease-out;
+}
+
+.fitmanager-ai-robot__eye-hl,
+.fitmanager-ai-robot__eye-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: translate(calc(var(--eye-x) * 0.14), calc(var(--eye-y) * 0.14));
+  transition: transform 0.11s ease-out;
+}
+
+/* Retour doux au centre quand la souris quitte la fenêtre */
+.fitmanager-ai-floating-button.gaze-return .fitmanager-ai-robot__eye,
+.fitmanager-ai-floating-button.gaze-return .fitmanager-ai-robot__eye-hl,
+.fitmanager-ai-floating-button.gaze-return .fitmanager-ai-robot__eye-glow {
+  transition: transform 0.6s ease-out;
+  transform: translate(0, 0);
+}
+
+@keyframes fitmanager-ai-think {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ==== Panneau assistant ==== */
+.fitmanager-ai-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 92px;
+  z-index: 59;
+  width: min(380px, calc(100vw - 24px));
+  animation: fitmanager-ai-panel-in 0.22s ease;
+}
+
+@keyframes fitmanager-ai-panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fitmanager-ai-panel__card {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(59, 130, 246, 0.12);
+  max-height: min(70vh, 520px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fitmanager-ai-panel__orb-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+}
+
+.fitmanager-ai-panel__orb-mini .fitmanager-ai-robot {
+  width: 34px;
+  height: 37px;
+}
+
+/* ==== Préférence mouvement réduit ==== */
+@media (prefers-reduced-motion: reduce) {
+  .fitmanager-ai-floating-button:not(.is-large):not(.is-dragging) {
+    animation: none;
+  }
+
+  .fitmanager-ai-robot-scope {
+    transition: none;
+  }
+
+  .fitmanager-ai-robot-scope .fitmanager-ai-robot *,
+  .fitmanager-ai-floating-button.is-training .fitmanager-ai-robot__body,
+  .fitmanager-ai-floating-button.is-drinking .fitmanager-ai-robot__body,
+  .fitmanager-ai-floating-button.is-resting .fitmanager-ai-robot__body,
+  .fitmanager-ai-robot__body.is-training .fitmanager-ai-robot__arm-swing-l,
+  .fitmanager-ai-robot__body.is-training .fitmanager-ai-robot__arm-swing-r {
+    animation: none !important;
+  }
+
+  .fitmanager-ai-floating-button.is-growing .fitmanager-ai-robot {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .fitmanager-ai-floating-button {
+    width: 52px;
+    height: 52px;
+  }
+
+  .fitmanager-ai-robot-scope,
+  .fitmanager-ai-robot-spin {
+    width: 52px;
+    height: 52px;
+  }
+
+  .fitmanager-ai-robot {
+    width: 52px;
+    height: 57px;
+  }
+
+  .fitmanager-ai-panel {
+    right: 10px;
+    bottom: 78px;
+    width: calc(100vw - 20px);
+  }
+}

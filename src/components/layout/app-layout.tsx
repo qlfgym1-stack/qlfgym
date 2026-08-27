@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 
 import { Sidebar, MobileSidebar } from "@/components/layout/sidebar"
 import { Navbar } from "@/components/layout/navbar"
+import { AiFloatingRobot } from "@/components/layout/ai-robot"
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -24,6 +25,7 @@ export function AppLayout() {
           </motion.div>
         </main>
       </div>
+      <AiFloatingRobot />
     </div>
   )
 }
