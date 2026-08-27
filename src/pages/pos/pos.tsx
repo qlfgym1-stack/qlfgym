@@ -914,6 +914,7 @@ export default function POSPage() {
       queryClient.invalidateQueries({ queryKey: ["stock_movements"] })
       queryClient.invalidateQueries({ queryKey: ["subscription-types"] })
       queryClient.invalidateQueries({ queryKey: ["payments"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
       queryClient.invalidateQueries({ queryKey: ["pos-pending-subscriptions", organization?.id] })
       const { data: { user } } = await supabase.auth.getUser()
       if (user) queryClient.invalidateQueries({ queryKey: ["member-subscriptions", user.id] })

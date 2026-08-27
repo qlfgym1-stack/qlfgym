@@ -49,12 +49,12 @@ export default function Dashboard() {
   const { toast } = useToast()
   const orgId = organization?.id
 
-  useRealtime({ table: "attendance", queryKey: ["dash", orgId ?? ""], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
-  useRealtime({ table: "members", queryKey: ["dash", orgId ?? ""], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
-  useRealtime({ table: "payments", queryKey: ["dash", orgId ?? ""], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
+useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
+  useRealtime({ table: "members", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
+  useRealtime({ table: "payments", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
 
   const { data: agg, isLoading: aggLoading } = useQuery({
-    queryKey: ['dash_agg', orgId],
+    queryKey: ['dashboard-stats', 'agg', orgId],
     queryFn: async () => {
       if (!orgId) return null
       const { data, error } = await (supabase.rpc as any)('get_dashboard_stats', { p_organization_id: orgId })
@@ -63,12 +63,13 @@ export default function Dashboard() {
         total_members: number; active_members: number;
         today_checkins: number; monthly_revenue: number;
       } | null
-    },
+},
     enabled: !!orgId,
+    refetchInterval: 30_000,
   })
 
   const { data: extra, isLoading: extraLoading } = useQuery({
-    queryKey: ['dash_extra', orgId],
+    queryKey: ['dashboard-stats', 'extra', orgId],
     queryFn: async () => {
       if (!orgId) return null
       const today = new Date().toISOString().split('T')[0]
@@ -171,8 +172,9 @@ export default function Dashboard() {
         expiring_subscriptions: expiringCount ?? 0,
         expired_subscriptions: expiredCount ?? 0,
       }
-    },
+},
     enabled: !!orgId,
+    refetchInterval: 30_000,
   })
 
   const loading = aggLoading || extraLoading
@@ -201,13 +203,12 @@ export default function Dashboard() {
     expired_subscriptions: extra?.expired_subscriptions ?? 0,
   }), [agg, extra])
 
-  const occupancyRate = dash.active_members > 0
-    ? Math.round((dash.today_checkins / dash.active_members) * 100)
+const occupancyRate = dash.active_members > 0
+    ? Math.min(100, Math.round((dash.today_checkins / dash.active_members) * 100))
     : 0
 
   function handleRefresh() {
-    queryClient.invalidateQueries({ queryKey: ['dash_agg'] })
-    queryClient.invalidateQueries({ queryKey: ['dash_extra'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
     toast({ title: t('dashboard.refreshed') || 'Données actualisées' })
   }
 
@@ -287,8 +288,8 @@ export default function Dashboard() {
           />
           <KpiCard
             icon={Wallet}
-            label="Revenus du Mois"
-            value={formatCurrency(dash.monthly_revenue)}
+label="Revenus du Mois"
+            value={formatCurrency(dash.monthly_revenue_total)}
             color="#06b6d4"
           />
         </div>
