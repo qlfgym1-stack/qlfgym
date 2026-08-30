@@ -13,11 +13,7 @@ interface AiChatContextValue {
   error: string | null
   send: (question: string, context: string) => Promise<void>
   reset: () => void
-  panelOpen: boolean
   input: string
-  openPanel: () => void
-  closePanel: () => void
-  togglePanel: () => void
   setInput: (v: string) => void
 }
 
@@ -27,9 +23,7 @@ const AiChatContext = createContext<AiChatContextValue | null>(null)
 // sans exploser le payload). On garde les N derniers + le message courant.
 const HISTORY_LIMIT = 12
 
-// Store UNIQUE du chat : partagé entre le module /ai-assistant et le robot
-// flottant. Une question posée depuis le robot est visible dans le module et
-// inversement (règle : un seul assistant, une seule session, un seul historique).
+// Store UNIQUE du chat : une seule session, un seul historique par module.
 export function AiChatProvider({ children }: { children: ReactNode }) {
   const t = useT()
   const db = useSupabase()
@@ -38,7 +32,6 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
   ])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [panelOpen, setPanelOpen] = useState(false)
   const [input, setInputState] = useState("")
   const requestSeq = useRef(0)
 
@@ -94,26 +87,13 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [t])
 
-  const openPanel = useCallback(() => {
-    setPanelOpen(true)
-  }, [])
-
-  const closePanel = useCallback(() => {
-    setPanelOpen(false)
-    setInputState("")
-  }, [])
-
-  const togglePanel = useCallback(() => {
-    setPanelOpen((v) => !v)
-  }, [])
-
   const setInput = useCallback((v: string) => {
     setInputState(v)
   }, [])
 
   const value = useMemo<AiChatContextValue>(
-    () => ({ messages, loading, error, send, reset, panelOpen, input, openPanel, closePanel, togglePanel, setInput }),
-    [messages, loading, error, send, reset, panelOpen, input, openPanel, closePanel, togglePanel, setInput]
+    () => ({ messages, loading, error, send, reset, input, setInput }),
+    [messages, loading, error, send, reset, input, setInput]
   )
 
   return <AiChatContext.Provider value={value}>{children}</AiChatContext.Provider>

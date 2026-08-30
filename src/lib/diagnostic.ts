@@ -98,6 +98,12 @@ export function generateDiagId(): string {
   return `DIAG-${date}-${time}-${generateRandomHex(4)}`
 }
 
+function isDevHost(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
+}
+
 export function checkEnvironment(): ZoneResult {
   const nav = typeof navigator !== 'undefined' ? navigator : null
   if (!nav) return { status: 'unknown', label: 'ENVIRONMENT', detail: 'No navigator' }
@@ -297,12 +303,12 @@ export async function checkCache(): Promise<ZoneResult> {
     }
   } catch { /* ignore */ }
 
-  const overall: DiagnosticStatus = detail.sw === 'Not registered' ? 'warning' : 'ok'
+  const overall: DiagnosticStatus = detail.sw === 'Not registered' && !isDevHost() ? 'warning' : 'ok'
 
   return {
     status: overall,
     label: 'CACHE',
-    detail: `SW: ${detail.sw} | Query cache: ${detail.queryCache} | Offline queue: ${detail.offlineQueue}`,
+    detail: `SW: ${detail.sw}${isDevHost() && detail.sw === 'Not registered' ? ' (désactivé en dev)' : ''} | Query cache: ${detail.queryCache} | Offline queue: ${detail.offlineQueue}`,
     data: detail,
   }
 }

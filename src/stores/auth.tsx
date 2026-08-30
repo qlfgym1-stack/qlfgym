@@ -215,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ email: identifier, code: recoveryCode }),
+        signal: AbortSignal.timeout(10000),
       })
       const data = await res.json()
       if (!res.ok || data.error) {

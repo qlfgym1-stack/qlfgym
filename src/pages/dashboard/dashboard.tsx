@@ -49,9 +49,17 @@ export default function Dashboard() {
   const { toast } = useToast()
   const orgId = organization?.id
 
-useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
-  useRealtime({ table: "members", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
-  useRealtime({ table: "payments", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined })
+const REALTIME_DEBOUNCE = 4000
+
+  useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "members", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "payments", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "pos_transactions", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "member_subscriptions", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "staff", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "products", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "expenses", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "user_roles", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
 
   const { data: agg, isLoading: aggLoading } = useQuery({
     queryKey: ['dashboard-stats', 'agg', orgId],
@@ -65,7 +73,6 @@ useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId 
       } | null
 },
     enabled: !!orgId,
-    refetchInterval: 30_000,
   })
 
   const { data: extra, isLoading: extraLoading } = useQuery({
@@ -101,13 +108,13 @@ useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId 
         { count: expiringCount },
         { count: expiredCount },
       ] = await Promise.all([
-        supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).gte('check_in', today).is('check_out', null),
+        supabase.from('attendance').select('*', { count: 'estimated', head: true }).eq('organization_id', orgId).gte('check_in', today).is('check_out', null),
         supabase.from('payments').select('payment_date, amount').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', monthStartStr).order('amount', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('organization_id', orgId),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('organization_id', orgId),
-        supabase.from('staff').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('role', 'coach'),
-        supabase.from('staff').select('*', { count: 'exact', head: true }).eq('organization_id', orgId),
-        supabase.from('staff').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
+        supabase.from('user_roles').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId),
+        supabase.from('products').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId),
+        supabase.from('staff').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('role', 'coach'),
+        supabase.from('staff').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId),
+        supabase.from('staff').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('is_active', true),
         supabase.from('pos_transactions').select('total, items').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', monthStartStr),
         supabase.from('payments').select('amount').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', monthStartStr),
         supabase.from('expenses').select('amount, category').eq('organization_id', orgId).gte('expense_date', monthStartStr),
@@ -117,9 +124,9 @@ useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId 
         supabase.from('payments').select('amount').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', weekStartStr),
         supabase.from('pos_transactions').select('total').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', weekStartStr),
         // Count expiring subscriptions (active, end_date within 7 days)
-        supabase.from('member_subscriptions').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'active').gte('end_date', today).lt('end_date', nextWeek),
+        supabase.from('member_subscriptions').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('status', 'active').gte('end_date', today).lt('end_date', nextWeek),
         // Count recently expired subscriptions (expired within 30 days)
-        supabase.from('member_subscriptions').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'expired').gte('end_date', monthAgo),
+        supabase.from('member_subscriptions').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('status', 'expired').gte('end_date', monthAgo),
       ])
 
       let bestDayRevenue = 0
@@ -174,7 +181,6 @@ useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId 
       }
 },
     enabled: !!orgId,
-    refetchInterval: 30_000,
   })
 
   const loading = aggLoading || extraLoading

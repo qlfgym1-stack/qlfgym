@@ -232,6 +232,25 @@ describe('checkModules', () => {
   })
 })
 
+describe('checkCache', () => {
+  it('returns ok when SW not registered on localhost (dev)', async () => {
+    vi.stubGlobal('window', { location: { hostname: 'localhost' } })
+    vi.stubGlobal('navigator', { serviceWorker: { getRegistration: vi.fn().mockResolvedValue(null) } })
+    const result = await checkCache()
+    expect(result.status).toBe('ok')
+    expect(result.detail).toContain('désactivé en dev')
+    vi.unstubAllGlobals()
+  })
+
+  it('returns warning when SW not registered on production host', async () => {
+    vi.stubGlobal('window', { location: { hostname: 'qlfgym.vercel.app' } })
+    vi.stubGlobal('navigator', { serviceWorker: { getRegistration: vi.fn().mockResolvedValue(null) } })
+    const result = await checkCache()
+    expect(result.status).toBe('warning')
+    vi.unstubAllGlobals()
+  })
+})
+
 describe('generateReport', () => {
   it('generates a formatted report string', async () => {
     vi.stubGlobal('localStorage', mockLocalStorage())

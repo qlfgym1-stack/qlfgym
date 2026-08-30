@@ -20,14 +20,14 @@ function getCorsHeaders(request: Request) {
 }
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: getCorsHeaders(req) })
+  }
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
     })
-  }
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: getCorsHeaders(req) })
   }
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')

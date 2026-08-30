@@ -77,6 +77,7 @@ export default function AdminUsersPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
       body: JSON.stringify({ action, ...params }),
+      signal: AbortSignal.timeout(10000),
     })
     const json = await res.json() as Record<string, unknown>
     if (!res.ok) throw new Error(String(json.error || json.message || `HTTP ${res.status}`))

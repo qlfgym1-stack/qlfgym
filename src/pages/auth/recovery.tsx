@@ -86,6 +86,7 @@ export default function Recovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "verify", email: values.email, code: values.code.toUpperCase() }),
+        signal: AbortSignal.timeout(10000),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -124,6 +125,7 @@ export default function Recovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reset", email: codeForm.getValues("email"), code: codeForm.getValues("code").toUpperCase(), newPassword: values.password }),
+        signal: AbortSignal.timeout(10000),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Reset failed");

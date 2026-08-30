@@ -4,7 +4,7 @@ import type { MemberKpi } from "./kpi"
 import type { SubscriptionRow } from "./raw"
 
 const DAY = 86400000
-const NOW = new Date("2026-08-14T12:00:00Z")
+const NOW = new Date()
 
 function sub(over: Partial<SubscriptionRow> = {}): SubscriptionRow {
   return {

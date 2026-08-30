@@ -296,6 +296,32 @@ export function useAccountingData(
     queryFn: async () => {
       if (!orgId) return []
       const now = new Date()
+      // 6 mois d'historique en 3 requêtes (au lieu de 18 séquentielles)
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+      const fromISO = sixMonthsAgo.toISOString()
+      const fromDay = sixMonthsAgo.toISOString().slice(0, 10)
+      const [payRes, posRes, expRes] = await Promise.all([
+        supabase
+          .from("payments")
+          .select("amount, payment_date")
+          .eq("organization_id", orgId)
+          .eq("status", "completed")
+          .gte("payment_date", fromDay),
+        supabase
+          .from("pos_transactions")
+          .select("total, created_at")
+          .eq("organization_id", orgId)
+          .eq("payment_status", "completed")
+          .gte("created_at", fromISO),
+        supabase
+          .from("expenses")
+          .select("amount, expense_date")
+          .eq("organization_id", orgId)
+          .gte("expense_date", fromDay),
+      ])
+      const pays = (payRes.data ?? []) as { amount: number; payment_date: string }[]
+      const poss = (posRes.data ?? []) as { total: number; created_at: string }[]
+      const exps = (expRes.data ?? []) as { amount: number; expense_date: string }[]
       const result: MonthlyEntry[] = []
       for (let i = 5; i >= 0; i--) {
         const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -304,32 +330,16 @@ export function useAccountingData(
         const sTo = mEnd.toISOString()
         const mStartDay = mStart.toISOString().slice(0, 10)
         const mEndDay = mEnd.toISOString().slice(0, 10)
-        const [revRes, expRes] = await Promise.all([
-          supabase
-            .from("payments")
-            .select("amount")
-            .eq("organization_id", orgId)
-            .eq("status", "completed")
-            .gte("payment_date", sFrom)
-            .lte("payment_date", sTo),
-          supabase
-            .from("expenses")
-            .select("amount")
-            .eq("organization_id", orgId)
-            .gte("expense_date", mStartDay)
-            .lte("expense_date", mEndDay),
-        ])
-        const posRes = await supabase
-          .from("pos_transactions")
-          .select("total")
-          .eq("organization_id", orgId)
-          .eq("payment_status", "completed")
-          .gte("created_at", sFrom)
-          .lte("created_at", sTo)
         const revTotal =
-          (revRes.data ?? []).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0) +
-          (posRes.data ?? []).reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
-        const expTotal = (expRes.data ?? []).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+          pays
+            .filter((r) => r.payment_date >= mStartDay && r.payment_date <= mEndDay)
+            .reduce((s: number, r) => s + safeNum(r.amount), 0) +
+          poss
+            .filter((r) => r.created_at >= sFrom && r.created_at <= sTo)
+            .reduce((s: number, r) => s + safeNum(r.total), 0)
+        const expTotal = exps
+          .filter((r) => r.expense_date >= mStartDay && r.expense_date <= mEndDay)
+          .reduce((s: number, r) => s + safeNum(r.amount), 0)
         const monthLabel = mStart.toLocaleDateString("fr-FR", { month: "short", year: "numeric" })
         result.push({
           label: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
@@ -462,177 +472,101 @@ export function useAccountingData(
     return result
   }, [totalRevenue, totalExpenses, profit, cashFlow, expensesByCategory, prevMonthRevenue])
 
-  const { data: dailyPayments = [] } = useQuery({
-    queryKey: ["ac-daily-rev", orgId],
-    queryFn: async () => {
-      if (!orgId) return []
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const { data } = await supabase
-        .from("payments")
-        .select("amount")
-        .eq("organization_id", orgId)
-        .eq("status", "completed")
-        .gte("payment_date", todayStart.toISOString())
-      return (data ?? []) as { amount: number }[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: dailyPos = [] } = useQuery({
-    queryKey: ["ac-daily-pos", orgId],
-    queryFn: async () => {
-      if (!orgId) return []
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      const { data } = await supabase
-        .from("pos_transactions")
-        .select("total")
-        .eq("organization_id", orgId)
-        .eq("payment_status", "completed")
-        .gte("created_at", todayStart.toISOString())
-      return (data ?? []) as { total: number }[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: dailyExpenses = [] } = useQuery({
-    queryKey: ["ac-daily-exp", orgId],
-    queryFn: async () => {
-      if (!orgId) return []
-      const todayStr = new Date().toISOString().slice(0, 10)
-      const { data } = await supabase
-        .from("expenses")
-        .select("amount")
-        .eq("organization_id", orgId)
-        .eq("expense_date", todayStr)
-      return (data ?? []) as { amount: number }[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: weekPayments = [] } = useQuery({
-    queryKey: ["ac-week-rev", orgId],
-    queryFn: async () => {
-      if (!orgId) return []
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      const { data } = await supabase
-        .from("payments")
-        .select("amount")
-        .eq("organization_id", orgId)
-        .eq("status", "completed")
-        .gte("payment_date", weekAgo.toISOString())
-      return (data ?? []) as { amount: number }[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: weekPos = [] } = useQuery({
-    queryKey: ["ac-week-pos", orgId],
-    queryFn: async () => {
-      if (!orgId) return []
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      const { data } = await supabase
-        .from("pos_transactions")
-        .select("total")
-        .eq("organization_id", orgId)
-        .eq("payment_status", "completed")
-        .gte("created_at", weekAgo.toISOString())
-      return (data ?? []) as { total: number }[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: weekExpenses = [] } = useQuery({
-    queryKey: ["ac-week-exp", orgId],
-    queryFn: async () => {
-      if (!orgId) return []
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      const weekStr = weekAgo.toISOString().slice(0, 10)
-      const { data } = await supabase
-        .from("expenses")
-        .select("amount")
-        .eq("organization_id", orgId)
-        .gte("expense_date", weekStr)
-      return (data ?? []) as { amount: number }[]
-    },
-    enabled: !!orgId,
-  })
-
-  const { data: monthPayments = [] } = useQuery({
-    queryKey: ["ac-month-rev", orgId],
+  const { data: summaryPayments = [] } = useQuery({
+    queryKey: ["ac-summary-pay", orgId],
     queryFn: async () => {
       if (!orgId) return []
       const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
       const { data } = await supabase
         .from("payments")
-        .select("amount")
+        .select("amount, payment_date")
         .eq("organization_id", orgId)
         .eq("status", "completed")
         .gte("payment_date", mStart.toISOString())
-      return (data ?? []) as { amount: number }[]
+      return ((data ?? []) as { amount: number; payment_date: string }[]).map(
+        (r) => ({ amount: r.amount, day: r.payment_date.slice(0, 10) }),
+      )
     },
     enabled: !!orgId,
   })
 
-  const { data: monthPos = [] } = useQuery({
-    queryKey: ["ac-month-pos", orgId],
+  const { data: summaryPos = [] } = useQuery({
+    queryKey: ["ac-summary-pos", orgId],
     queryFn: async () => {
       if (!orgId) return []
       const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
       const { data } = await supabase
         .from("pos_transactions")
-        .select("total")
+        .select("total, created_at")
         .eq("organization_id", orgId)
         .eq("payment_status", "completed")
         .gte("created_at", mStart.toISOString())
-      return (data ?? []) as { total: number }[]
+      return ((data ?? []) as { total: number; created_at: string }[]).map(
+        (r) => ({ total: r.total, day: r.created_at.slice(0, 10) }),
+      )
     },
     enabled: !!orgId,
   })
 
-  const { data: monthExpenses = [] } = useQuery({
-    queryKey: ["ac-month-exp", orgId],
+  const { data: summaryExpenses = [] } = useQuery({
+    queryKey: ["ac-summary-exp", orgId],
     queryFn: async () => {
       if (!orgId) return []
       const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
       const mStr = mStart.toISOString().slice(0, 10)
       const { data } = await supabase
         .from("expenses")
-        .select("amount")
+        .select("amount, expense_date")
         .eq("organization_id", orgId)
         .gte("expense_date", mStr)
-      return (data ?? []) as { amount: number }[]
+      return ((data ?? []) as { amount: number; expense_date: string }[]).map(
+        (r) => ({ amount: r.amount, day: r.expense_date.slice(0, 10) }),
+      )
     },
     enabled: !!orgId,
   })
 
   const revToday = useMemo(() => {
-    const p = dailyPayments.reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
-    const pos = dailyPos.reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const p = summaryPayments.filter((r: { day: string }) => r.day === todayStr).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+    const pos = summaryPos.filter((r: { day: string }) => r.day === todayStr).reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
     return p + pos
-  }, [dailyPayments, dailyPos])
+  }, [summaryPayments, summaryPos])
 
-  const expToday = useMemo(() => dailyExpenses.reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0), [dailyExpenses])
+  const expToday = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    return summaryExpenses.filter((r: { day: string }) => r.day === todayStr).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+  }, [summaryExpenses])
 
   const revWeek = useMemo(() => {
-    const p = weekPayments.reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
-    const pos = weekPos.reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    const weekStr = weekAgo.toISOString().slice(0, 10)
+    const p = summaryPayments.filter((r: { day: string }) => r.day >= weekStr).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+    const pos = summaryPos.filter((r: { day: string }) => r.day >= weekStr).reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
     return p + pos
-  }, [weekPayments, weekPos])
+  }, [summaryPayments, summaryPos])
 
-  const expWeek = useMemo(() => weekExpenses.reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0), [weekExpenses])
+  const expWeek = useMemo(() => {
+    const weekAgo = new Date()
+    weekAgo.setDate(weekAgo.getDate() - 7)
+    const weekStr = weekAgo.toISOString().slice(0, 10)
+    return summaryExpenses.filter((r: { day: string }) => r.day >= weekStr).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+  }, [summaryExpenses])
 
   const revMonth = useMemo(() => {
-    const p = monthPayments.reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
-    const pos = monthPos.reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
+    const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    const mStr = mStart.toISOString().slice(0, 10)
+    const p = summaryPayments.filter((r: { day: string }) => r.day >= mStr).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+    const pos = summaryPos.filter((r: { day: string }) => r.day >= mStr).reduce((s: number, r: { total: number }) => s + safeNum(r.total), 0)
     return p + pos
-  }, [monthPayments, monthPos])
+  }, [summaryPayments, summaryPos])
 
-  const expMonth = useMemo(() => monthExpenses.reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0), [monthExpenses])
+  const expMonth = useMemo(() => {
+    const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    const mStr = mStart.toISOString().slice(0, 10)
+    return summaryExpenses.filter((r: { day: string }) => r.day >= mStr).reduce((s: number, r: { amount: number }) => s + safeNum(r.amount), 0)
+  }, [summaryExpenses])
 
   const aiAnalysis: AiAnalysis = useMemo(() => {
     const periodLabel = filters.period === "daily" ? "du jour" : filters.period === "weekly" ? "de la semaine" : filters.period === "monthly" ? "du mois" : "de la période sélectionnée"

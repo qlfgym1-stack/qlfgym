@@ -1076,7 +1076,6 @@ const ar = {
   aiAssistant: {
     title: "المساعد الذكي",
     subtitle: "تحليل وتنبؤات وإجراءات موصى بها لزيادة الأرباح",
-    openAssistant: "افتح المساعد الذكي",
     monthly: "شهر",
     quarterly: "ثلاثي",
     custom: "مخصص",
@@ -1200,6 +1199,8 @@ const ar = {
     chatWelcome: "مرحباً، أنا مساعدك الذكي. اسألني أي شيء عن ناديك: الإيرادات، المنتجات، الاشتراكات، ساعات الذروة، التوقعات…",
     chatThinking: "المساعد يفكر…",
     chatPlaceholder: "مثال: كيف أزيد الإيرادات بنسبة 20%؟",
+    chatReset: "إعادة تعيين المحادثة",
+    chatClose: "إغلاق",
     wolfBubbleIdle: "مرحبا 👋",
     wolfBubbleTraining: "وضع التمرين 💪",
     wolfBubbleDrinking: "ترطيب 💧",

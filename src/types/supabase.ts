@@ -16,9 +16,9 @@ export interface Database {
         Relationships: []
       }
       members: {
-        Row: { id: string; organization_id: string; first_name: string; last_name: string; full_name?: string | null; email: string | null; phone: string | null; gender: string | null; birth_date: string | null; address: string | null; emergency_contact: string | null; emergency_phone: string | null; photo_url: string | null; status: 'active' | 'inactive' | 'suspended' | 'blocked'; last_visit: string | null; notes: string | null; created_at: string; updated_at: string; member_number: string | null; coach_id: string | null; corporate_id: string | null }
-        Insert: { id?: string; organization_id: string; first_name: string; last_name: string; email?: string | null; phone?: string | null; gender?: string | null; birth_date?: string | null; address?: string | null; emergency_contact?: string | null; emergency_phone?: string | null; photo_url?: string | null; status?: 'active' | 'inactive' | 'suspended' | 'blocked'; last_visit?: string | null; notes?: string | null; created_at?: string; updated_at?: string; member_number?: string | null; coach_id?: string | null; corporate_id?: string | null }
-        Update: { id?: string; organization_id?: string; first_name?: string; last_name?: string; email?: string | null; phone?: string | null; gender?: string | null; birth_date?: string | null; address?: string | null; emergency_contact?: string | null; emergency_phone?: string | null; photo_url?: string | null; status?: 'active' | 'inactive' | 'suspended' | 'blocked'; last_visit?: string | null; notes?: string | null; created_at?: string; updated_at?: string; member_number?: string | null; coach_id?: string | null; corporate_id?: string | null }
+        Row: { id: string; organization_id: string; user_id: string | null; first_name: string; last_name: string; full_name?: string | null; email: string | null; phone: string | null; gender: string | null; birth_date: string | null; address: string | null; emergency_contact: string | null; emergency_phone: string | null; photo_url: string | null; status: 'active' | 'inactive' | 'suspended' | 'blocked'; last_visit: string | null; notes: string | null; created_at: string; updated_at: string; member_number: string | null; coach_id: string | null; corporate_id: string | null }
+        Insert: { id?: string; organization_id: string; user_id?: string | null; first_name: string; last_name: string; email?: string | null; phone?: string | null; gender?: string | null; birth_date?: string | null; address?: string | null; emergency_contact?: string | null; emergency_phone?: string | null; photo_url?: string | null; status?: 'active' | 'inactive' | 'suspended' | 'blocked'; last_visit?: string | null; notes?: string | null; created_at?: string; updated_at?: string; member_number?: string | null; coach_id?: string | null; corporate_id?: string | null }
+        Update: { id?: string; organization_id?: string; user_id?: string | null; first_name?: string; last_name?: string; email?: string | null; phone?: string | null; gender?: string | null; birth_date?: string | null; address?: string | null; emergency_contact?: string | null; emergency_phone?: string | null; photo_url?: string | null; status?: 'active' | 'inactive' | 'suspended' | 'blocked'; last_visit?: string | null; notes?: string | null; created_at?: string; updated_at?: string; member_number?: string | null; coach_id?: string | null; corporate_id?: string | null }
         Relationships: []
       }
       subscription_types: {
@@ -237,10 +237,10 @@ export interface Database {
         Update: { user_id?: string; code_hash?: string; created_at?: string; last_used_at?: string | null }
         Relationships: []
       }
-      recovery_code_logs: {
-        Row: { id: string; user_id: string; attempted_at: string; success: boolean; ip_address: string | null; user_agent: string | null }
-        Insert: { id?: string; user_id: string; attempted_at?: string; success: boolean; ip_address?: string | null; user_agent?: string | null }
-        Update: { id?: string; user_id?: string; attempted_at?: string; success?: boolean; ip_address?: string | null; user_agent?: string | null }
+recovery_code_logs: {
+        Row: { id: string; user_id: string; attempted_at: string; success: boolean; action: string; ip_address: string | null; user_agent: string | null }
+        Insert: { id?: string; user_id: string; attempted_at?: string; success: boolean; action?: string; ip_address?: string | null; user_agent?: string | null }
+        Update: { id?: string; user_id?: string; attempted_at?: string; success?: boolean; action?: string; ip_address?: string | null; user_agent?: string | null }
         Relationships: []
       }
       expenses: {

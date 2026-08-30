@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sha256, generateCode } from '../_shared/crypto.ts'
 
 async function hashEqual(a: string, b: string): Promise<boolean> {
+  if (a.length !== b.length) return false
   const enc = new TextEncoder()
   return crypto.subtle.timingSafeEqual(enc.encode(a), enc.encode(b))
 }
@@ -27,6 +28,10 @@ function getCorsHeaders(request: Request) {
 
 serve(async (req) => {
   try {
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: getCorsHeaders(req) })
+    }
+
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
@@ -34,9 +39,6 @@ serve(async (req) => {
       })
     }
 
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: getCorsHeaders(req) })
-    }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!supabaseUrl || !supabaseKey) {

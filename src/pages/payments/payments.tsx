@@ -119,7 +119,7 @@ export default function PaymentsPage() {
       if (!orgId || IS_MOCK) return []
       const { data } = await supabase
         .from("payments")
-        .select("*, members!inner(first_name, last_name, member_number), member_subscriptions(subscription_types(name))")
+        .select("id, amount, payment_date, payment_method, status, notes, members!inner(first_name, last_name, member_number)")
         .eq("organization_id", orgId)
         .order("created_at", { ascending: false })
       return data as PaymentWithRelations[]

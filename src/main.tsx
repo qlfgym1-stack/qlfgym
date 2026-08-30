@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient } from '@tanstack/react-query'
@@ -17,7 +17,7 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 30,
+      staleTime: 1000 * 120,
       gcTime: 1000 * 60 * 60,
       retry: 2,
       networkMode: 'offlineFirst',
@@ -27,6 +27,23 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+const SKIP_PERSIST = new Set([
+  'members',
+  'member-insights',
+  'member-subscriptions-map',
+  'member-profile',
+  'member-history',
+  'payments',
+  'pos-history',
+  'attendance-history',
+  'subscriptions-list',
+])
+
+const persistFilter = (query: { queryKey: unknown[] }): boolean => {
+  const key = query.queryKey?.[0]
+  return typeof key === 'string' ? !SKIP_PERSIST.has(key) : true
+}
 
 const persister = createSyncStoragePersister({
   storage: window.localStorage,
@@ -38,7 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister, maxAge: 1000 * 60 * 60 }}
+        persistOptions={{ persister, maxAge: 1000 * 60 * 60, filter: persistFilter }}
       >
         <ThemeProvider>
           <I18nProvider>
