@@ -96,9 +96,7 @@
 - **Boutons Premium v2 (uiverse.io)** : couleurs refondues light+dark dans `button.tsx` — default **blue→indigo** glossy `#3b82f6→#2563eb→#4f46e5` (dark `#60a5fa→#3b82f6→#6366f1`), destructive dégradé rouge avec inset highlight, secondary **glass** (`indigo-50`/`white/5`), outline **Stripe-like**, ghost/`link` adaptés au mode ; `.btn-shine` overlay adapté dark (blanc 0.4 light / 0.18 dark) ; focus ring `primary/50`
 
 ### In Progress
-- Intégration des anomalies de l'audit (reste : sign-in i18n F-4 intentionnel, Git branches G2)
-- Configurer les variables d'env Edge Functions (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`) — nécessite `supabase login`
-- Remplacer `SUPABASE_PROJECT_REF` dans `00004_cron_jobs.sql` et activer les cron jobs
+- Intégration des anomalies de l'audit (reste : sign-in i18n F-4 intentionnel) — F-4 assumé, G2 terminé
 
 ### Blocked
 - **(none)**
@@ -126,7 +124,7 @@
 - **Phase 3 — Sécurité/perf SQL — migration `00109_fluidity_fixes.sql` (déployée)** : RPC `get_member_attendance_counts(p_org_id)` (SECURITY DEFINER + `SET search_path = public` + garde `is_org_member`, réplique SQL du compte JS via `DISTINCT ON` dernière souscription + `check_in BETWEEN start_date AND end_date`) remplaçant le select complet de `attendance` côté client ; 3 index composites (`members(org,phone)`, `attendance(org,check_in)`, `payments(org,payment_date)`) ; fix statut fantôme `'trial'` dans `phone_check_in` (le CHECK ne l'autorise jamais) ; `SET search_path = public` sur 8 RPCs `SECURITY DEFINER` sensibles (RFID + dashboard + roster)
 - **Correction EF CORS** : `recovery`, `sign-in-with-recovery`, `send-subscription-reminder` — le guard `POST` interceptait `OPTIONS` avant le bloc 204 (préflight CORS → 405, bloc 204 mort) ; réordonnées comme `ai-chat`/`send-payment-reminder` (OPTIONS en premier)
 - **Migration `00109` poussée** sur Supabase (Local = Remote = 00109) — dépôt via `supabase db push` ; `00104_fix_cron_jobs_url.sql` déjà appliquée (crons 8h/9h programmés) ; secrets EF déjà définis sur le projet (`OPENROUTER_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)
-- **G2 — Workflow CI PR** — `.github/workflows/pr.yml` créé (CI sur PR master/develop : `npm ci` → `tsc` → `vitest` → `build`, job Vercel preview commenté)
+- **G2 — Workflow CI PR** — `.github/workflows/pr.yml` créé, committé et poussé sur GitHub (CI sur PR master/develop : `npm ci` → `tsc` → `vitest` → `build`, job Vercel preview commenté) ; protection `master` active (1 review + check `ci` strict requis, historique linéaire, force-push/suppression bloqués) ; `develop` fast-forwardé au niveau de `master`
 
 ## Key Decisions
 - `SECURITY DEFINER` retiré au lieu d'ajouter un check explicite dans `renew_subscription` : RLS s'applique automatiquement au caller
@@ -144,7 +142,7 @@
 ## Next Steps
 - Test manuel navigateur (Ctrl+Shift+R) : `/ai-assistant` (KPIs, actions P0/P1/P2, graphique heures, produits phares, prévisions confiance, insights EN/AR/FR) + test corporate POS (adhérent avec carte → panier abonnement → remise auto/retirable → paiement RPC montant remisé) + recherche navbar (`/members?q=`) + `/member-insights` (KPIs, churn, segments, matrice, fréquentation)
 - ✅ Bug rentabilite corrigé : filtre `organization_id` sur `class_enrollments` (`useProfitabilityData.ts:260` via `classes!inner`) + clés i18n rentabilite FR/AR/EN complètes
-- ✅ Corriger les anomalies restantes (F-4 sign-in i18n intentionnel, G2 branches Git) — F-4 resté intentionnel ; G2 : workflow `pr.yml` créé localement, reste à committer + push (branche feature/PR) + protection `master`
+- ✅ Corriger les anomalies restantes (F-4 sign-in i18n intentionnel, G2 branches Git) — F-4 resté intentionnel ; G2 : workflow `pr.yml` poussé sur GitHub + protection `master` active + `develop` fast-forwardé
 - ✅ Configurer les variables d'env Edge Functions — déjà définies sur le projet (secrets list : OPENROUTER_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY présents)
 - ✅ Remplacer `SUPABASE_PROJECT_REF` dans `00004_cron_jobs.sql` — fait par `00104_fix_cron_jobs_url.sql` déjà appliquée (crons 8h/9h actifs)
 
@@ -247,7 +245,7 @@
 | F-6 | Frontend | Navbar import `@tanstack/react-query` direct au lieu de `@/hooks/useQuery` | ✅ Corrigé |
 | F-7 | Frontend | Navbar champ Search non fonctionnel | ✅ Corrigé (membres lit `?q=`) |
 | F-8 | Frontend | Settings "Save" ne fait que `toast()` — aucune écriture DB | ✅ Corrigé |
-| G2 | Git | Aucune branche secondaire — tout sur master, pas de workflow PR | **À corriger** |
+| G2 | Git | Aucune branche secondaire — tout sur master, pas de workflow PR | ✅ Corrigé (workflow CI `pr.yml` + protection master + branches develop/feature) |
 | B1 | Git/Deps | 2 PNGs non optimisées (LOGO 1.82MB + QLG_3D 186KB) = 40% du dist | ✅ Corrigé (LOGO webp 37KB + QLG_3D redimensionné 67.9KB, origine supprimée) |
 | C1 | Build | `noImplicitAny: false` — masque erreurs de typage TypeScript | **À corriger** |
 
