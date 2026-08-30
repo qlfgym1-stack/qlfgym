@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  ci:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Tests
+        run: npx vitest --run
+      - name: Build
+        run: npx vite build
+      # --- Preview Vercel (décommenter une fois le hook obtenu dans les settings Vercel) ---
+      # - name: Deploy Preview (Vercel)
+      #   run: |
+      #     curl -X POST \
+      #       "https://api.vercel.com/v1/integrations/deploy/${VERCEL_HOOK_ID}?branch=develop"
+      #   env:
+      #     VERCEL_HOOK_ID: ${{ secrets.VERCEL_DEPLOY_HOOK_ID }}
