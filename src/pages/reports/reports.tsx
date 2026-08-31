@@ -63,11 +63,11 @@ export default function ReportsPage() {
         const start = m.toISOString()
         const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1).toISOString()
         const { data: rev } = await supabase.from("payments").select("amount").eq("organization_id", orgId).eq("status", "completed").gte("payment_date", start).lt("payment_date", end)
-        const { data: exp } = await supabase.from("payments").select("amount").eq("organization_id", orgId).eq("status", "completed").gte("payment_date", start).lt("payment_date", end)
+        const { data: exp } = await supabase.from("expenses").select("amount").eq("organization_id", orgId).gte("expense_date", start).lt("expense_date", end)
         result.push({
           month: MONTHS[m.getMonth()],
           revenue: rev?.reduce((s, p) => s + p.amount, 0) ?? 0,
-          expenses: 0,
+          expenses: exp?.reduce((s, e) => s + (e.amount || 0), 0) ?? 0,
         })
       }
       return result
@@ -102,8 +102,8 @@ export default function ReportsPage() {
         const m = new Date(now.getFullYear(), now.getMonth() - i, 1)
         const start = m.toISOString()
         const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1).toISOString()
-        const { count: checkins } = await supabase.from("attendance").select("*", { count: "exact", head: true }).eq("organization_id", orgId).gte("check_in", start).lt("check_in", end)
-        const { count: classes } = await supabase.from("attendance").select("*", { count: "exact", head: true }).eq("organization_id", orgId).gte("check_in", start).lt("check_in", end)
+        const { count: checkins } = await supabase.from("attendance").select("*", { count: "exact", head: true }).eq("organization_id", orgId).eq("type", "check-in").gte("check_in", start).lt("check_in", end)
+        const { count: classes } = await supabase.from("attendance").select("*", { count: "exact", head: true }).eq("organization_id", orgId).eq("type", "class").gte("check_in", start).lt("check_in", end)
         result.push({ month: MONTHS[m.getMonth()], checkins: checkins ?? 0, classes: classes ?? 0 })
       }
       return result

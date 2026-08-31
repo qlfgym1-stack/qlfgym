@@ -58,21 +58,22 @@ serve(async (req) => {
 
     const { data: roles } = await userClient
       .from('user_roles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('user_id', user.id)
       .eq('role', 'admin')
-      .maybeSingle()
-
-    if (!roles) {
-      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
-      })
-    }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
     const body = await req.json()
     const { action, ...params } = body
+
+    const targetOrg = params.organization_id || roles?.[0]?.organization_id
+    const isTargetAdmin = roles?.some((r: any) => r.organization_id === targetOrg)
+    if (!isTargetAdmin) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required for this organization' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+      })
+    }
 
     switch (action) {
       case 'list': {
@@ -167,17 +168,18 @@ serve(async (req) => {
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser(userData)
         if (createError) throw createError
 
-        const role = params.role || 'staff'
+        const allowedRoles = ['staff', 'coach', 'admin']
+        const role = allowedRoles.includes(params.role) ? params.role : 'staff'
         const { error: roleError } = await supabase.from('user_roles').insert({
           user_id: newUser.user.id,
-          organization_id: params.organization_id || roles.organization_id,
+          organization_id: targetOrg,
           role,
         })
         if (roleError) throw roleError
 
         if (rfid_uid || role !== 'admin') {
           const staffPayload: Record<string, unknown> = {
-            organization_id: params.organization_id || roles.organization_id,
+            organization_id: targetOrg,
             user_id: newUser.user.id,
             first_name: first_name || '',
             last_name: last_name || '',
@@ -195,7 +197,6 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           user: { id: newUser.user.id, email: newUser.user.email, username: finalUsername },
-          password,
         }), {
           headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
         })
@@ -284,6 +285,13 @@ serve(async (req) => {
         }
 
         if (role && organization_id) {
+          const allowedRoles = ['staff', 'coach', 'admin']
+          if (!allowedRoles.includes(role)) {
+            return new Response(JSON.stringify({ error: 'Invalid role' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+            })
+          }
           const { error: roleError } = await supabase
             .from('user_roles')
             .update({ role })
@@ -301,6 +309,13 @@ serve(async (req) => {
         const { user_id } = params
         if (!user_id) {
           return new Response(JSON.stringify({ error: 'user_id required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+          })
+        }
+
+        if (user_id === user.id) {
+          return new Response(JSON.stringify({ error: 'Cannot delete your own account' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
           })
@@ -331,6 +346,13 @@ serve(async (req) => {
         const { user_id, active } = params
         if (!user_id) {
           return new Response(JSON.stringify({ error: 'user_id required' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+          })
+        }
+
+        if (user_id === user.id) {
+          return new Response(JSON.stringify({ error: 'Cannot ban your own account' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
           })

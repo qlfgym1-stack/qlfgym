@@ -303,13 +303,14 @@ function InstallPrompt() {
     };
     window.addEventListener('beforeinstallprompt', handler);
 
-    window.addEventListener('appinstalled', () => {
+    const installedHandler = () => {
       setIsInstalled(true);
       capturedInstallPrompt = null;
       setDeferredPrompt(null);
       setShowPrompt(false);
       toast({ title: t('install.installed') });
-    });
+    };
+    window.addEventListener('appinstalled', installedHandler);
 
     // Popup rapide (4s) si l'événement est disponible
     const promptTimer = setTimeout(() => {
@@ -324,6 +325,7 @@ function InstallPrompt() {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
       clearTimeout(promptTimer);
       clearTimeout(fallbackTimer);
     };

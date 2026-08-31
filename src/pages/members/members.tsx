@@ -591,25 +591,25 @@ export default function Members() {
         })
         if (error) throw error
         if (values.coach_id) {
-          await supabase.from('members').update({ coach_id: values.coach_id }).eq('id', data.member_id)
+          const { error: coachError } = await supabase.from('members').update({ coach_id: values.coach_id }).eq('id', data.member_id)
+          if (coachError) console.error('Coach assignment failed:', coachError)
         }
         if (rfidUid) {
-          await (supabase.rpc as any)('assign_rfid_card', {
+          const { error: rfidError } = await (supabase.rpc as any)('assign_rfid_card', {
             p_member_id: data.member_id, p_rfid_uid: rfidUid, p_created_by: user?.id || null,
           })
+          if (rfidError) console.error('RFID assignment failed:', rfidError)
         }
         return data as { member_id: string; subscription_id: string; total_amount: number; subscription_name: string; organization_id: string; first_name: string; last_name: string }
       }
       const { subscription_type_id, start_date, full_name: _fullName, ...memberFields } = values
-      const { error } = await supabase.from('members').insert({ ...memberFields, organization_id: orgId, first_name, last_name, photo_url, email: values.email || null, phone: values.phone || null, gender: values.gender || null, birth_date: values.birth_date || null, address: values.address || null, emergency_contact: values.emergency_contact || null, emergency_phone: values.emergency_phone || null, coach_id: memberFields.coach_id || null, corporate_id: values.corporate_id || null } as any)
+      const { data: newMember, error } = await supabase.from('members').insert({ ...memberFields, organization_id: orgId, first_name, last_name, photo_url, email: values.email || null, phone: values.phone || null, gender: values.gender || null, birth_date: values.birth_date || null, address: values.address || null, emergency_contact: values.emergency_contact || null, emergency_phone: values.emergency_phone || null, coach_id: memberFields.coach_id || null, corporate_id: values.corporate_id || null } as any).select('id').single()
       if (error) throw error
       if (rfidUid) {
-        const { data: newMember } = await supabase.from('members').select('id').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(1).single()
-        if (newMember) {
-          await (supabase.rpc as any)('assign_rfid_card', {
-            p_member_id: newMember.id, p_rfid_uid: rfidUid, p_created_by: user?.id || null,
-          })
-        }
+        const { error: rfidError } = await (supabase.rpc as any)('assign_rfid_card', {
+          p_member_id: newMember.id, p_rfid_uid: rfidUid, p_created_by: user?.id || null,
+        })
+        if (rfidError) console.error('RFID assignment failed:', rfidError)
       }
       return null
     },

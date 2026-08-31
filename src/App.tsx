@@ -95,7 +95,8 @@ const RECEPTION_ROUTES = new Set(['/pointage', '/members', '/pos', '/encaissemen
 const CLEANER_ROUTES = new Set(['/pointage'])
 
 function isRestricted(role: string, allowed: Set<string>, pathname: string, roles: { role: string }[]) {
-  return roles.some(r => r.role === role) && !roles.some(r => r.role === 'admin') && !allowed.has(pathname)
+  if (roles.some(r => ['admin', 'staff', 'coach'].includes(r.role))) return false
+  return roles.some(r => r.role === role) && !allowed.has(pathname)
 }
 
 function RoleGuard({ children }: { children: React.ReactNode }) {
@@ -109,8 +110,8 @@ function RoleGuard({ children }: { children: React.ReactNode }) {
 }
 
 function isRestrictedRole(roles: { role: string }[]) {
-  return (roles.some(r => r.role === 'receptionist') || roles.some(r => r.role === 'cleaner'))
-    && !roles.some(r => r.role === 'admin')
+  if (roles.some(r => ['admin', 'staff', 'coach'].includes(r.role))) return false
+  return roles.some(r => r.role === 'receptionist') || roles.some(r => r.role === 'cleaner')
 }
 
 function IndexRedirect() {

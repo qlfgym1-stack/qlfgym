@@ -63,19 +63,6 @@ serve(async (req) => {
       })
     }
 
-    const { data: roleRow, error: roleError } = await userClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single()
-
-    if (roleError || !roleRow || !['admin'].includes(roleRow.role)) {
-      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
-      })
-    }
-
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     const body = await req.json()
@@ -84,6 +71,20 @@ serve(async (req) => {
     if (!organization_id || !type || !title || !message) {
       return new Response(JSON.stringify({ error: 'Missing required fields: organization_id, type, title, message' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+      })
+    }
+
+    const { data: roleRow, error: roleError } = await userClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('organization_id', organization_id)
+      .single()
+
+    if (roleError || !roleRow || !['admin'].includes(roleRow.role)) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required for this organization' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
       })
     }

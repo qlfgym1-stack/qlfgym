@@ -148,7 +148,9 @@ export default function PointagePage() {
 
   useEffect(() => {
     if (!orgId) return
-    ;(supabase.rpc as any)("auto_close_stale_attendances").then(() => {})
+    ;(supabase.rpc as any)("auto_close_stale_attendances").catch((e: unknown) =>
+      console.warn('auto_close_stale_attendances failed:', e)
+    )
   }, [orgId, supabase])
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -644,6 +646,8 @@ export default function PointagePage() {
 
   const checkoutRfidMutation = useMutation({
     mutationFn: async (uid: string) => {
+      if (!orgId) return { result: "denied" as const, reason: "Organisation non définie" }
+      const currentOrgId = orgId
       const { data: card, error: cardErr } = await supabase
         .from("rfid_cards")
         .select("member_id, status")
@@ -657,6 +661,7 @@ export default function PointagePage() {
         .from("members")
         .select("id, first_name, last_name, status")
         .eq("id", card.member_id)
+        .eq("organization_id", currentOrgId)
         .single()
       if (!member || member.status !== "active") {
         return { result: "denied" as const, reason: "Membre introuvable ou inactif" }
@@ -665,6 +670,7 @@ export default function PointagePage() {
         .from("attendance")
         .select("id")
         .eq("member_id", card.member_id)
+        .eq("organization_id", currentOrgId)
         .is("check_out", null)
         .not("check_in", "is", null)
         .eq("type", "check-in")

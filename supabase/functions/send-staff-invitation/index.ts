@@ -83,7 +83,7 @@ serve(async (req) => {
     const token = crypto.randomUUID()
     const { data: invitation, error } = await supabase
       .from('staff_invitations')
-      .insert({ email, role, organization_id, token })
+      .insert({ email, role, organization_id, token, invited_by: user.id })
       .select()
       .single()
 
@@ -93,7 +93,7 @@ serve(async (req) => {
       })
     }
 
-    const inviteUrl = `${supabaseUrl.replace('.supabase.co', '')}/auth/v1/verify?token=${token}&type=invite&redirect_to=${encodeURIComponent('/auth/accept-invite')}`
+    const inviteUrl = `${supabaseUrl}/auth/v1/verify?token=${token}&type=invite&redirect_to=${encodeURIComponent('/auth/accept-invite')}`
 
     return new Response(JSON.stringify({
       invitation,

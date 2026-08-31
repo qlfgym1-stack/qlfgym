@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout'
 import {
   Users, UserCheck, DollarSign, CalendarDays, TrendingUp, Percent,
-  Database, FileText, Activity, UserCog, Heart, BarChart3,
+  Database, FileText, UserCog, Heart, BarChart3,
   RefreshCw, UserPlus, CreditCard, Wallet, Target, Loader2, XCircle,
 } from 'lucide-react'
 import { formatCurrency, toUpper } from '@/lib/utils'
@@ -405,9 +405,7 @@ label="Revenus du Mois"
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Accès Rapide</h2>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { icon: Database, label: 'Base de données', path: '/admin/database', color: '#3b82f6' },
             { icon: FileText, label: 'Journal Audit', path: '/admin/audit', color: '#8b5cf6' },
-            { icon: Activity, label: 'Monitoring', path: '/admin/monitoring', color: '#10b981' },
             { icon: UserCog, label: 'Personnel', path: '/staff', color: '#f59e0b' },
             { icon: Heart, label: 'Fidélité', path: '/badges', color: '#ec4899' },
             { icon: BarChart3, label: 'Analyses', path: '/reports', color: '#06b6d4' },

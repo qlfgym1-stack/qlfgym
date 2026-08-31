@@ -25,19 +25,22 @@ export default function InstallPage() {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
     }
+    const installedHandler = () => {
+      setIsInstalled(true)
+      setDeferredPrompt(null)
+      toast({ title: t("install.installed") })
+    }
     window.addEventListener("beforeinstallprompt", handler)
+    window.addEventListener("appinstalled", installedHandler)
 
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true)
     }
 
-    window.addEventListener("appinstalled", () => {
-      setIsInstalled(true)
-      setDeferredPrompt(null)
-      toast({ title: t("install.installed") })
-    })
-
-    return () => window.removeEventListener("beforeinstallprompt", handler)
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler)
+      window.removeEventListener("appinstalled", installedHandler)
+    }
   }, [t, toast])
 
   async function handleInstall() {

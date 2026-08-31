@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Organization, UserRole } from '@/types/supabase'
 import { IS_MOCK } from '@/lib/config'
 import { generateRecoveryCode, storeRecoveryCode, setMockRecoveryData } from '@/lib/recovery'
+import { queryClient } from '@/main'
 
 interface Profile {
   id: string; email: string; full_name?: string | null; avatar_url?: string | null
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshLockRef = useRef(false)
   const proactiveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fetchSeqRef = useRef(0)
 
   const tryRefreshSession = useCallback(async (retryCount = 0): Promise<boolean> => {
     if (refreshLockRef.current) return false
@@ -114,9 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchSession = useCallback(async (retryCount = 0, skipRefresh = false) => {
     if (IS_MOCK) { setState(MOCK_ADMIN); return }
+    fetchSeqRef.current++
+    const seq = fetchSeqRef.current
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
+        if (fetchSeqRef.current !== seq) return
         setState(s => ({ ...s, isLoading: false }))
         return
       }
@@ -136,13 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)))
           return fetchSession(retryCount + 1, skipRefresh)
         }
-        setState({ user, profile, organization: null, roles: [], isLoading: false, isAuthenticated: true, authError: 'Erreur de chargement des rôles. Rechargez la page.' })
+        if (fetchSeqRef.current !== seq) return
+        setState({ user, profile, organization: null, roles: [], isLoading: false, isAuthenticated: false, authError: 'Erreur de chargement des rôles. Rechargez la page.' })
         return
       }
       const userRoles = roles ?? []
       const orgId = userRoles[0]?.organization_id
       if (!orgId) {
-        setState({ user, profile, organization: null, roles: userRoles, isLoading: false, isAuthenticated: true, authError: 'Aucune organisation associée à votre compte.' })
+        if (fetchSeqRef.current !== seq) return
+        setState({ user, profile, organization: null, roles: userRoles, isLoading: false, isAuthenticated: false, authError: 'Aucune organisation associée à votre compte.' })
         return
       }
       const { data: orgData, error: orgError } = await supabase.from('organizations').select('*').eq('id', orgId).single()
@@ -159,9 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)))
           return fetchSession(retryCount + 1, skipRefresh)
         }
-        setState({ user, profile, organization: null, roles: userRoles, isLoading: false, isAuthenticated: true, authError: 'Erreur de connexion au serveur. Veuillez recharger la page.' })
+        if (fetchSeqRef.current !== seq) return
+        setState({ user, profile, organization: null, roles: userRoles, isLoading: false, isAuthenticated: false, authError: 'Erreur de connexion au serveur. Veuillez recharger la page.' })
         return
       }
+      if (fetchSeqRef.current !== seq) return
       setState({ user, profile, organization: orgData, roles: userRoles, isLoading: false, isAuthenticated: true, authError: null })
     } catch (err) {
       console.error('[Auth] Session error:', err)
@@ -176,7 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)))
         return fetchSession(retryCount + 1, skipRefresh)
       }
-      setState(s => ({ ...s, isLoading: false, authError: 'Erreur de connexion. Vérifiez votre réseau et recharger la page.' }))
+      if (fetchSeqRef.current !== seq) return
+      setState(s => ({ ...s, isLoading: false, isAuthenticated: false, authError: 'Erreur de connexion. Vérifiez votre réseau et recharger la page.' }))
     }
   }, [supabase, tryRefreshSession])
 
@@ -184,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (IS_MOCK) { setState(MOCK_ADMIN); return }
     fetchSession()
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         fetchSession()
       }
     })
@@ -282,6 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (proactiveTimerRef.current) clearInterval(proactiveTimerRef.current)
       await supabase.auth.signOut()
+      queryClient.clear()
     } finally {
       setState(s => ({ ...s, user: null, profile: null, organization: null, roles: [], isAuthenticated: false, authError: null }))
     }

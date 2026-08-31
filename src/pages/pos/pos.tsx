@@ -333,12 +333,13 @@ export default function POSPage() {
   const [newSubStartDate, setNewSubStartDate] = useState("")
 
   const { data: products, isLoading, isError: productsError, error: productsQueryError } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", organization?.id],
     queryFn: async () => {
       if (IS_MOCK) return []
-      const { data } = await supabase.from("products").select("*").eq("is_active", true).order("name")
+      const { data } = await supabase.from("products").select("*").eq("organization_id", organization?.id!).eq("is_active", true).order("name")
       return data ?? []
     },
+    enabled: !!organization?.id,
   })
 
   const { data: dropInType } = useQuery({
@@ -494,16 +495,16 @@ export default function POSPage() {
   })
 
   const { data: selectedMemberDetails } = useQuery({
-    queryKey: ["member_details_pos", selectedMemberId],
+    queryKey: ["member_details_pos", selectedMemberId, organization?.id],
     queryFn: async () => {
       if (IS_MOCK) return null
-      if (!selectedMemberId) return null
-      const { data: member } = await supabase.from("members").select("id, first_name, last_name, phone, photo_url, member_number, corporate_id").eq("id", selectedMemberId).single()
+      if (!selectedMemberId || !organization?.id) return null
+      const { data: member } = await supabase.from("members").select("id, first_name, last_name, phone, photo_url, member_number, corporate_id").eq("id", selectedMemberId).eq("organization_id", organization.id).single()
       if (!member) return null
-      const { data: sub } = await supabase.from("member_subscriptions").select("status, start_date, end_date, subscription_types(name)").eq("member_id", selectedMemberId).eq("status", "active").maybeSingle()
+      const { data: sub } = await supabase.from("member_subscriptions").select("status, start_date, end_date, subscription_types(name)").eq("member_id", selectedMemberId).eq("organization_id", organization.id).eq("status", "active").maybeSingle()
       return { ...member, subscription: sub as { status: string; start_date: string; end_date: string; subscription_types: { name: string } | null } | null ?? null }
     },
-    enabled: !IS_MOCK && !!selectedMemberId,
+    enabled: !IS_MOCK && !!selectedMemberId && !!organization?.id,
   })
 
   const filteredProducts = useMemo(() => {
@@ -840,7 +841,7 @@ export default function POSPage() {
           p_member_id: selectedMemberId,
           p_items: cart.map(item => ({ id: item.product.id, name: item.product.name, price: item.product.price, quantity: item.quantity })),
           p_subtotal: subtotal,
-          p_discount: (discountValue || 0) + corporateDiscount || null,
+          p_discount: ((discountValue || 0) + (corporateDiscount || 0)) || null,
           p_total: total,
           p_payment_method: paymentMethod,
           p_user_id: user?.id ?? null,

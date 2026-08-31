@@ -119,7 +119,7 @@ export default function CheckinDialog({ open, onOpenChange }: CheckinDialogProps
   })
 
   const manualCheckInMutation = useMutation({
-    mutationFn: async (params: { member_id: string; user_id: string; reason: string; terminal?: string; reason_detail?: string }) => {
+    mutationFn: async (params: { p_member_id: string; p_user_id: string; p_reason: string; p_terminal?: string; p_reason_detail?: string }) => {
       const { data } = await (supabase.rpc as any)("manual_check_in", params)
       return data as ScanResult
     },
@@ -167,11 +167,11 @@ export default function CheckinDialog({ open, onOpenChange }: CheckinDialogProps
   const handleManualValidate = useCallback(() => {
     if (!selectedMemberId || !manualReason || !userId) return
     manualCheckInMutation.mutate({
-      member_id: selectedMemberId,
-      user_id: userId,
-      reason: manualReason,
-      terminal: DIALOG_TERMINAL,
-      reason_detail: manualDetail || undefined,
+      p_member_id: selectedMemberId,
+      p_user_id: userId,
+      p_reason: manualReason,
+      p_terminal: DIALOG_TERMINAL,
+      p_reason_detail: manualDetail || undefined,
     })
   }, [selectedMemberId, manualReason, userId, manualDetail, manualCheckInMutation])
 

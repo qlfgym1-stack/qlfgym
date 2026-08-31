@@ -34,6 +34,8 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [input, setInputState] = useState("")
   const requestSeq = useRef(0)
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
 
   const send = useCallback(async (question: string, context: string) => {
     const trimmed = question.trim()
@@ -43,8 +45,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
     setMessages((prev) => [...prev, { role: "user", content: trimmed }])
     setLoading(true)
     try {
-      // R5 : envoie l'historique réel (N derniers messages) + le message courant
-      const history = messages
+      const history = messagesRef.current
         .filter((m) => m.content !== t("aiAssistant.chatWelcome"))
         .slice(-HISTORY_LIMIT)
       const { data: res, error: invokeError } = await db.functions.invoke<{ content: string }>("ai-chat", {
@@ -79,7 +80,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
     } finally {
       if (seq === requestSeq.current) setLoading(false)
     }
-  }, [db, messages, t])
+  }, [db, t])
 
   const reset = useCallback(() => {
     setMessages([{ role: "assistant", content: t("aiAssistant.chatWelcome") }])

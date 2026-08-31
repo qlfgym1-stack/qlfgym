@@ -75,7 +75,7 @@ export default function StaffPage() {
 
   const form = useForm<StaffForm>({
     resolver: zodResolver(staffSchema),
-    defaultValues: { firstName: "", lastName: "", email: "", phone: "", role: "", salary: "" as unknown as number, hireDate: "" },
+    defaultValues: { firstName: "", lastName: "", email: "", phone: "", role: "", salary: undefined as number | undefined, hireDate: "" },
   })
 
   const { data: staffList, isLoading, isError: staffError, error: staffQueryError } = useQuery({
@@ -154,7 +154,7 @@ export default function StaffPage() {
       email: staff.email ?? "",
       phone: formatPhone(staff.phone) ?? "",
       role: staff.role ?? "",
-      salary: staff.salary ?? "" as unknown as number,
+      salary: staff.salary ?? undefined,
       hireDate: staff.hire_date ?? "",
     })
     setOpen(true)

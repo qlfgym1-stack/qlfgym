@@ -173,7 +173,7 @@ export function MemberDayDetail({ memberId, memberName, date, open, onOpenChange
               {(data?.attendance ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun pointage ce jour</p>
               ) : (
-                data!.attendance.map((a: { id: string; check_in: string | null; check_out: string | null; source: string | null }) => {
+                data?.attendance.map((a: { id: string; check_in: string | null; check_out: string | null; source: string | null }) => {
                   const status = getMemberStatus(a.check_in, a.check_out)
                   const badge = statusVariant[status]
                   const source = a.source === "rfid" ? "RFID" : a.source === "manual" ? "Manuel" : "App"
@@ -243,7 +243,7 @@ export function MemberDayDetail({ memberId, memberName, date, open, onOpenChange
               {(data?.pos ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun achat ce jour</p>
               ) : (
-                data!.pos.map((p: { id: string; total: number; payment_method: string | null; items: unknown; created_at: string }) => {
+                data?.pos.map((p: { id: string; total: number; payment_method: string | null; items: unknown; created_at: string }) => {
                   const items = Array.isArray(p.items) ? (p.items as { name?: string; quantity?: number }[]) : []
                   return (
                     <div key={p.id} className="rounded-lg border p-3 text-sm">
@@ -265,7 +265,7 @@ export function MemberDayDetail({ memberId, memberName, date, open, onOpenChange
               {(data?.payments ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun paiement ce jour</p>
               ) : (
-                data!.payments.map((p: { id: string; amount: number; payment_method: string | null; payment_date: string }) => (
+                data?.payments.map((p: { id: string; amount: number; payment_method: string | null; payment_date: string }) => (
                   <div key={p.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
                     <span className="text-xs text-muted-foreground">{formatDate(p.payment_date)} · {p.payment_method ?? "—"}</span>
                     <span className="font-semibold">{formatCurrency(p.amount)}</span>

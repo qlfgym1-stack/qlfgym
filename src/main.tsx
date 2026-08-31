@@ -14,7 +14,7 @@ import { PWAUpdateSystem } from '@/components/ui/update-notification'
 import App from './App'
 import './index.css'
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 120,
