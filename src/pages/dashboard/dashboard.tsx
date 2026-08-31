@@ -50,9 +50,12 @@ export default function Dashboard() {
   const orgId = organization?.id
 
 const REALTIME_DEBOUNCE = 4000
+// KPI temps réel (Adhérents Actifs, Check-ins, Taux d'Occupation) : rafraîchis
+// quasi-immédiatement (1000 ms) ; les autres tables restent groupées à 4000 ms.
+const REALTIME_DEBOUNCE_FAST = 1000
 
-  useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
-  useRealtime({ table: "members", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
+  useRealtime({ table: "attendance", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE_FAST })
+  useRealtime({ table: "members", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE_FAST })
   useRealtime({ table: "payments", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
   useRealtime({ table: "pos_transactions", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })
   useRealtime({ table: "member_subscriptions", queryKey: ["dashboard-stats"], filter: orgId ? `organization_id=eq.${orgId}` : undefined, debounceMs: REALTIME_DEBOUNCE })

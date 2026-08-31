@@ -35,7 +35,7 @@ export function sendWhatsApp(phone: string, message: string): void {
   const digits = formatPhone(phone)
   if (!digits) return
   const text = encodeURIComponent(message)
-  const url = `https://wa.me/${digits}?text=${text}`
+  const url = `https://web.whatsapp.com/send?phone=${digits}&text=${text}`
   window.open(url, "_blank")
 }
 
