@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import { useQuery } from "@/hooks/useQuery"
 import { useSupabase } from "@/hooks/useSupabase"
 import type { ProfitabilityData, ProfitabilityFilters, ProfitabilityItem } from "./types"
+import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
 
 function safeNum(v: unknown): number {
   const n = Number(v)
@@ -34,6 +35,7 @@ type RawPayment = {
   amount: number
   payment_date: string
   payment_method: string
+  member_id: string | null
   members: { first_name: string; last_name: string } | null
 }
 
@@ -42,6 +44,7 @@ type RawPosTransaction = {
   total: number
   created_at: string
   payment_method: string
+  member_id: string | null
   items: unknown
   members: { first_name: string; last_name: string } | null
 }
@@ -127,7 +130,7 @@ export function useProfitabilityData(
     queryFn: async () => {
       const { data, error } = await db
         .from("payments")
-        .select("id, amount, payment_date, payment_method, members(first_name, last_name)")
+        .select("id, amount, payment_date, payment_method, member_id, members(first_name, last_name)")
         .eq("organization_id", orgId!)
         .eq("status", "completed")
         .gte("payment_date", filters.dateFrom)
@@ -143,7 +146,7 @@ export function useProfitabilityData(
     queryFn: async () => {
       const { data, error } = await db
         .from("pos_transactions")
-        .select("id, total, created_at, payment_method, items, members(first_name, last_name)")
+        .select("id, total, created_at, payment_method, member_id, items, members(first_name, last_name)")
         .eq("organization_id", orgId!)
         .eq("payment_status", "completed")
         .gte("created_at", filters.dateFrom)
@@ -291,19 +294,23 @@ export function useProfitabilityData(
   const computed = useMemo(() => {
     const subscriptionRevenue = payments.reduce((s: number, p: RawPayment) => s + safeNum(p.amount), 0)
 
-    const posRevenue = posTransactions.reduce((s: number, t: RawPosTransaction) => {
-      const items = Array.isArray(t.items) ? t.items : []
-      const hasSubscription = items.some(
-        (it: unknown) =>
-          typeof it === "object" &&
-          it !== null &&
-          "id" in it &&
-          typeof (it as Record<string, unknown>).id === "string" &&
-          (it as any).id.startsWith("__subscription__")
-      )
-      if (hasSubscription) return s
-      return s + safeNum(t.total)
-    }, 0)
+    // Dédoublonnage : les abonnements/renouvellements réglés au POS sont déjà
+    // enregistrés dans `payments` — on retire les ventes POS virtuelles doublons.
+    const posKeys = buildSubscriptionKeys(payments.map((p: RawPayment) => ({
+      memberId: p.member_id ?? null,
+      amount: safeNum(p.amount),
+      date: p.payment_date,
+    })))
+    const filteredPosTransactions = posTransactions.filter((t: RawPosTransaction) =>
+      !isDuplicateSubscriptionPos({
+        memberId: t.member_id ?? null,
+        amount: safeNum(t.total),
+        date: t.created_at,
+        items: t.items,
+      }, posKeys)
+    )
+
+    const posRevenue = filteredPosTransactions.reduce((s: number, t: RawPosTransaction) => s + safeNum(t.total), 0)
 
     const otherRevenue = 0
     const totalRevenue = subscriptionRevenue + posRevenue + otherRevenue
@@ -374,7 +381,7 @@ export function useProfitabilityData(
         source: "pos",
         label: "Point de Vente",
         amount: posRevenue,
-        count: posTransactions.length,
+        count: filteredPosTransactions.length,
         percentage: totalRevenue > 0 ? (posRevenue / totalRevenue) * 100 : 0,
         color: SOURCE_COLORS.pos,
       },
@@ -498,7 +505,7 @@ export function useProfitabilityData(
         if (!monthMap[key]) monthMap[key] = { revenue: 0, expense: 0 }
         monthMap[key].revenue += safeNum(p.amount)
       }
-      for (const t of posTransactions) {
+      for (const t of filteredPosTransactions) {
         const key = getMonthLabel(t.created_at)
         if (!monthMap[key]) monthMap[key] = { revenue: 0, expense: 0 }
         const items = Array.isArray(t.items) ? t.items : []
@@ -539,7 +546,7 @@ export function useProfitabilityData(
         if (!yearMap[key]) yearMap[key] = { revenue: 0, expense: 0 }
         yearMap[key].revenue += safeNum(p.amount)
       }
-      for (const t of posTransactions) {
+      for (const t of filteredPosTransactions) {
         const key = String(new Date(t.created_at).getFullYear())
         if (!yearMap[key]) yearMap[key] = { revenue: 0, expense: 0 }
         const items = Array.isArray(t.items) ? t.items : []

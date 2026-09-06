@@ -15,6 +15,7 @@ import {
   RefreshCw, UserPlus, CreditCard, Wallet, Target, Loader2, XCircle,
 } from 'lucide-react'
 import { formatCurrency, toUpper } from '@/lib/utils'
+import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from '@/lib/ledger-dedupe'
 
 interface DashboardData {
   total_members: number
@@ -118,14 +119,14 @@ const REALTIME_DEBOUNCE_FAST = 1000
         supabase.from('staff').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('role', 'coach'),
         supabase.from('staff').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId),
         supabase.from('staff').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('is_active', true),
-        supabase.from('pos_transactions').select('total, items').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', monthStartStr),
-        supabase.from('payments').select('amount').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', monthStartStr),
+        supabase.from('pos_transactions').select('total, items, created_at, member_id').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', monthStartStr),
+        supabase.from('payments').select('amount, payment_date, member_id').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', monthStartStr),
         supabase.from('expenses').select('amount, category').eq('organization_id', orgId).gte('expense_date', monthStartStr),
         supabase.from('products').select('id, cost').eq('organization_id', orgId),
-        supabase.from('payments').select('amount').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', today),
-        supabase.from('pos_transactions').select('total').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', today),
-        supabase.from('payments').select('amount').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', weekStartStr),
-        supabase.from('pos_transactions').select('total').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', weekStartStr),
+        supabase.from('payments').select('amount, payment_date, member_id').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', today),
+        supabase.from('pos_transactions').select('total, created_at, member_id, items').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', today),
+        supabase.from('payments').select('amount, payment_date, member_id').eq('organization_id', orgId).eq('status', 'completed').gte('payment_date', weekStartStr),
+        supabase.from('pos_transactions').select('total, created_at, member_id, items').eq('organization_id', orgId).eq('payment_status', 'completed').gte('created_at', weekStartStr),
         // Count expiring subscriptions (active, end_date within 7 days)
         supabase.from('member_subscriptions').select('id', { count: 'estimated', head: true }).eq('organization_id', orgId).eq('status', 'active').gte('end_date', today).lt('end_date', nextWeek),
         // Count recently expired subscriptions (expired within 30 days)
@@ -152,16 +153,28 @@ const REALTIME_DEBOUNCE_FAST = 1000
         }
       }
       const monthExpensesTotal = (monthExpenses ?? []).reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0)
-      const posRevenue = (monthTransactions ?? []).reduce((sum: number, tx: any) => sum + (Number(tx.total) || 0), 0)
+      // Dédoublonner les abonnements/renouvellements payés au POS (déjà enregistrés dans `payments`)
+      const subKeys = buildSubscriptionKeys((monthPayments ?? []).map((p: any) => ({
+        memberId: p.member_id ?? null,
+        amount: Number(p.amount) || 0,
+        date: p.payment_date,
+      })))
+      const isDupPos = (tx: any) => isDuplicateSubscriptionPos({
+        memberId: tx.member_id ?? null,
+        amount: Number(tx.total) || 0,
+        date: tx.created_at,
+        items: tx.items,
+      }, subKeys)
+      const posRevenue = (monthTransactions ?? []).reduce((sum: number, tx: any) => sum + (isDupPos(tx) ? 0 : (Number(tx.total) || 0)), 0)
       const subRevenue = (monthPayments ?? []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
       const totalRevenue = posRevenue + subRevenue
       const totalCosts = totalCogs + monthExpensesTotal
       const profit = totalRevenue - totalCosts
       const revenueTodaySum = (paymentsToday ?? []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
-        + (posToday ?? []).reduce((sum: number, p: any) => sum + (Number(p.total) || 0), 0)
+        + (posToday ?? []).reduce((sum: number, p: any) => sum + (isDupPos(p) ? 0 : (Number(p.total) || 0)), 0)
       const encaissementToday = revenueTodaySum
       const encaissementWeek = (paymentsWeek ?? []).reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0)
-        + (posWeek ?? []).reduce((sum: number, p: any) => sum + (Number(p.total) || 0), 0)
+        + (posWeek ?? []).reduce((sum: number, p: any) => sum + (isDupPos(p) ? 0 : (Number(p.total) || 0)), 0)
 
       return {
         present_now: presentNow ?? 0,

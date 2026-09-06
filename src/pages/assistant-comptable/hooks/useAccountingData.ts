@@ -17,6 +17,7 @@ import type {
   AiAnalysis,
 } from "./types"
 import type { Database } from "@/types/supabase"
+import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
 
 type PaymentRow = Database["public"]["Tables"]["payments"]["Row"] & {
   members: { first_name: string; last_name: string } | null
@@ -104,7 +105,7 @@ export function useAccountingData(
       if (!orgId) return []
       const { data } = await supabase
         .from("payments")
-        .select("id, amount, payment_date, payment_method, status, members(first_name, last_name)")
+        .select("id, amount, payment_date, payment_method, member_id, status, members(first_name, last_name)")
         .eq("organization_id", orgId)
         .eq("status", "completed")
         .gte("payment_date", from)
@@ -120,7 +121,7 @@ export function useAccountingData(
       if (!orgId) return []
       const { data } = await supabase
         .from("pos_transactions")
-        .select("id, total, created_at, payment_method, payment_status, items, members(first_name, last_name)")
+        .select("id, total, created_at, payment_method, member_id, payment_status, items, members(first_name, last_name)")
         .eq("organization_id", orgId)
         .eq("payment_status", "completed")
         .gte("created_at", from)
@@ -152,12 +153,12 @@ export function useAccountingData(
       const prevFrom = new Date(new Date(from).getTime() - 30 * 86400000).toISOString()
       const { data } = await supabase
         .from("payments")
-        .select("amount")
+        .select("amount, payment_date, member_id")
         .eq("organization_id", orgId)
         .eq("status", "completed")
         .gte("payment_date", prevFrom)
         .lt("payment_date", from)
-      return (data ?? []) as { amount: number }[]
+      return (data ?? []) as { amount: number; payment_date: string; member_id: string | null }[]
     },
     enabled: !!orgId,
   })
@@ -169,17 +170,39 @@ export function useAccountingData(
       const prevFrom = new Date(new Date(from).getTime() - 30 * 86400000).toISOString()
       const { data } = await supabase
         .from("pos_transactions")
-        .select("total")
+        .select("total, created_at, member_id, items")
         .eq("organization_id", orgId)
         .eq("payment_status", "completed")
         .gte("created_at", prevFrom)
         .lt("created_at", from)
-      return (data ?? []) as { total: number }[]
+      return (data ?? []) as { total: number; created_at: string; member_id: string | null; items: unknown }[]
     },
     enabled: !!orgId,
   })
 
   const isLoading = paymentsLoading || posLoading || expensesLoading
+
+  // Dédoublonnage : les abonnements/renouvellements réglés au POS sont déjà
+  // enregistrés dans `payments` — on retire les ventes POS virtuelles doublons.
+  const ledgerKeys = useMemo(
+    () => buildSubscriptionKeys((paymentsRaw ?? []).map((p: PaymentRow) => ({
+      memberId: p.member_id ?? null,
+      amount: safeNum(p.amount),
+      date: p.payment_date,
+    }))),
+    [paymentsRaw]
+  )
+  const filteredPos = useMemo(
+    () => (posRaw ?? []).filter((t: PosRow) =>
+      !isDuplicateSubscriptionPos({
+        memberId: t.member_id ?? null,
+        amount: safeNum(t.total),
+        date: t.created_at,
+        items: t.items,
+      }, ledgerKeys)
+    ),
+    [posRaw, ledgerKeys]
+  )
 
   const subscriptionRevenue = useMemo(
     () => paymentsRaw.reduce((s: number, p: PaymentRow) => s + safeNum(p.amount), 0),
@@ -187,8 +210,8 @@ export function useAccountingData(
   )
 
   const posRevenue = useMemo(
-    () => posRaw.reduce((s: number, t: PosRow) => s + safeNum(t.total), 0),
-    [posRaw]
+    () => filteredPos.reduce((s: number, t: PosRow) => s + safeNum(t.total), 0),
+    [filteredPos]
   )
 
   const totalRevenue = subscriptionRevenue + posRevenue
@@ -203,15 +226,31 @@ export function useAccountingData(
   const cashFlow = profit
 
   const prevMonthRevenue = useMemo(
-    () => lastMonthPayments.reduce((s: number, p: { amount: number }) => s + safeNum(p.amount), 0)
-      + lastMonthPos.reduce((s: number, t: { total: number }) => s + safeNum(t.total), 0),
+    () => {
+      const keys = buildSubscriptionKeys(
+        (lastMonthPayments as { amount: number; payment_date: string; member_id: string | null }[]).map((p) => ({
+          memberId: p.member_id ?? null,
+          amount: safeNum(p.amount),
+          date: p.payment_date,
+        }))
+      )
+      const posSum = (lastMonthPos as { total: number; created_at: string; member_id: string | null; items: unknown }[])
+        .filter((t) => !isDuplicateSubscriptionPos({
+          memberId: t.member_id ?? null,
+          amount: safeNum(t.total),
+          date: t.created_at,
+          items: t.items,
+        }, keys))
+        .reduce((s: number, t) => s + safeNum(t.total), 0)
+      return (lastMonthPayments as { amount: number }[]).reduce((s: number, p: { amount: number }) => s + safeNum(p.amount), 0) + posSum
+    },
     [lastMonthPayments, lastMonthPos]
   )
 
   const revenueBySource: RevenueSource[] = useMemo(() => {
     const sources: RevenueSource[] = [
       { type: "subscriptions", label: "Abonnements", amount: subscriptionRevenue, count: paymentsRaw.length, percentage: 0 },
-      { type: "pos", label: "Point de Vente", amount: posRevenue, count: posRaw.length, percentage: 0 },
+      { type: "pos", label: "Point de Vente", amount: posRevenue, count: filteredPos.length, percentage: 0 },
       { type: "coaching", label: "Coaching", amount: 0, count: 0, percentage: 0 },
       { type: "classes", label: "Cours", amount: 0, count: 0, percentage: 0 },
       { type: "other", label: "Autres", amount: 0, count: 0, percentage: 0 },
@@ -222,7 +261,7 @@ export function useAccountingData(
       })
     }
     return sources
-  }, [subscriptionRevenue, posRevenue, paymentsRaw.length, posRaw.length, totalRevenue])
+  }, [subscriptionRevenue, posRevenue, filteredPos.length, totalRevenue])
 
   const revenueTransactions: RevenueTransaction[] = useMemo(() => {
     const txs: RevenueTransaction[] = []
@@ -239,7 +278,7 @@ export function useAccountingData(
         description: "Paiement abonnement",
       })
     }
-    for (const t of posRaw) {
+    for (const t of filteredPos) {
       const m = t.members
       const items = Array.isArray(t.items) ? t.items : []
       const hasSubscription = items.some(
@@ -258,7 +297,7 @@ export function useAccountingData(
       })
     }
     return txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [paymentsRaw, posRaw])
+  }, [paymentsRaw, filteredPos])
 
   const expensesByCategory: ExpenseCategory[] = useMemo(() => {
     const map = new Map<string, { amount: number; count: number }>()
@@ -303,13 +342,13 @@ export function useAccountingData(
       const [payRes, posRes, expRes] = await Promise.all([
         supabase
           .from("payments")
-          .select("amount, payment_date")
+          .select("amount, payment_date, member_id")
           .eq("organization_id", orgId)
           .eq("status", "completed")
           .gte("payment_date", fromDay),
         supabase
           .from("pos_transactions")
-          .select("total, created_at")
+          .select("total, created_at, member_id, items")
           .eq("organization_id", orgId)
           .eq("payment_status", "completed")
           .gte("created_at", fromISO),
@@ -319,9 +358,20 @@ export function useAccountingData(
           .eq("organization_id", orgId)
           .gte("expense_date", fromDay),
       ])
-      const pays = (payRes.data ?? []) as { amount: number; payment_date: string }[]
-      const poss = (posRes.data ?? []) as { total: number; created_at: string }[]
+      const pays = (payRes.data ?? []) as { amount: number; payment_date: string; member_id: string | null }[]
+      const poss = (posRes.data ?? []) as { total: number; created_at: string; member_id: string | null; items: unknown }[]
       const exps = (expRes.data ?? []) as { amount: number; expense_date: string }[]
+      const histKeys = buildSubscriptionKeys(pays.map((r) => ({
+        memberId: r.member_id ?? null,
+        amount: safeNum(r.amount),
+        date: r.payment_date,
+      })))
+      const filteredPoss = poss.filter((r) => !isDuplicateSubscriptionPos({
+        memberId: r.member_id ?? null,
+        amount: safeNum(r.total),
+        date: r.created_at,
+        items: r.items,
+      }, histKeys))
       const result: MonthlyEntry[] = []
       for (let i = 5; i >= 0; i--) {
         const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -334,7 +384,7 @@ export function useAccountingData(
           pays
             .filter((r) => r.payment_date >= mStartDay && r.payment_date <= mEndDay)
             .reduce((s: number, r) => s + safeNum(r.amount), 0) +
-          poss
+          filteredPoss
             .filter((r) => r.created_at >= sFrom && r.created_at <= sTo)
             .reduce((s: number, r) => s + safeNum(r.total), 0)
         const expTotal = exps
@@ -355,7 +405,7 @@ export function useAccountingData(
   })
 
   const salesJournal: JournalEntry[] = useMemo(() => {
-    return posRaw.map((t: PosRow) => {
+    return filteredPos.map((t: PosRow) => {
       const items = Array.isArray(t.items) ? t.items : []
       const hasSubscription = items.some((it: unknown) => {
         const rec = it as Record<string, unknown>
@@ -370,7 +420,7 @@ export function useAccountingData(
         account: "701 - Ventes",
       }
     }).filter(Boolean) as JournalEntry[]
-  }, [posRaw])
+  }, [filteredPos])
 
   const expenseJournal: JournalEntry[] = useMemo(() => {
     return expensesRaw.map((e: ExpenseRow) => ({

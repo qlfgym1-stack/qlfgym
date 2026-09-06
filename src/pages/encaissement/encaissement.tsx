@@ -25,6 +25,7 @@ import { IS_MOCK } from "@/lib/config"
 import { useToast } from "@/components/ui/toast"
 import { useOpenMember } from "@/hooks/useOpenMember"
 import type { PaymentChange, Member } from "@/types/supabase"
+import { buildSubscriptionKeys, paymentDedupeKey } from "@/lib/ledger-dedupe"
 
 interface EncaissementRow {
   id: string
@@ -50,16 +51,11 @@ function getTopRole(roles: { role: string }[]): string {
 }
 
 function dedupeRows(subs: EncaissementRow[], posRows: EncaissementRow[]): EncaissementRow[] {
-  const keys = new Set<string>()
-  for (const s of subs) {
-    if (!s.memberId) continue
-    const ts = new Date(s.date).getTime()
-    keys.add(`${s.memberId}|${Math.round(s.amount * 100)}|${Math.round(ts / 60000)}`)
-  }
+  const keys = buildSubscriptionKeys(subs)
   const filtered = posRows.filter(p => {
     if (!p.isVirtualSubscription || !p.memberId) return true
-    const ts = new Date(p.date).getTime()
-    return !keys.has(`${p.memberId}|${Math.round(p.amount * 100)}|${Math.round(ts / 60000)}`)
+    const k = paymentDedupeKey(p.memberId, p.amount, p.date)
+    return k === null || !keys.has(k)
   })
   return [...subs, ...filtered]
 }
