@@ -11,6 +11,7 @@
 - SHA-256 pour les codes de récupération
 - Compatible Supabase Auth, RLS, React 18, TypeScript strict
 - Vérifier avec `npx tsc --noEmit` et `npx vitest --run` après chaque correction
+- **Après chaque correction : enregistrer automatiquement et TOUT LE TEMPS** — 1) en local, 2) commit + push GitHub, 3) appliquer le changement sur Supabase, 4) créer et pousser la migration Supabase correspondante (si le changement touche la base)
 - **NE JAMAIS déployer sur Vercel sans consulter l'utilisateur d'abord** — toujours demander confirmation avant `vercel --prod`
 
 ## Progress
