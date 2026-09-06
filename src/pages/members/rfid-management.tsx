@@ -64,7 +64,7 @@ export function RfidManagementDialog({ memberId, memberName, open, onOpenChange 
       const { data, error } = await (supabase.rpc as any)('replace_rfid_card', {
         p_member_id: memberId,
         p_old_rfid_uid: activeCard?.rfid_uid,
-        p_new_rfid_uid: newRfidUid,
+        p_new_rfid_uid: newRfidUid.trim(),
         p_reason: replaceReason,
         p_notes: replaceNotes || null,
         p_created_by: user?.id || null,
@@ -103,7 +103,7 @@ export function RfidManagementDialog({ memberId, memberName, open, onOpenChange 
   const activateMutation = useMutation({
     mutationFn: async (rfidUid: string) => {
       const { data, error } = await (supabase.rpc as any)('reactivate_rfid_card', {
-        p_rfid_uid: rfidUid,
+        p_rfid_uid: rfidUid.trim(),
         p_reason: 'Réactivation manuelle',
         p_created_by: user?.id || null,
       })
@@ -116,7 +116,7 @@ export function RfidManagementDialog({ memberId, memberName, open, onOpenChange 
 
   async function handleCheckRfid() {
     if (!newRfidUid) return
-    const { data } = await (supabase.rpc as any)('check_rfid_available', { p_rfid_uid: newRfidUid })
+    const { data } = await (supabase.rpc as any)('check_rfid_available', { p_rfid_uid: newRfidUid.trim() })
     if (data?.available === false) {
       toast({ variant: 'destructive', title: 'Badge indisponible', description: data.member_name ? `Attribué à ${data.member_name}` : `Statut: ${data.status}` })
       return

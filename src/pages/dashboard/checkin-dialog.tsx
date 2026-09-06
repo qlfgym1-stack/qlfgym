@@ -143,26 +143,36 @@ export default function CheckinDialog({ open, onOpenChange }: CheckinDialogProps
 
   const handleScan = useCallback(async () => {
     const uid = cardUid.trim()
-    if (!uid) return
+    if (!uid || isScanning) return
     setIsScanning(true)
     setScanResult(null)
-    await rfidCheckInMutation.mutateAsync(uid)
-    setScanResult(rfidCheckInMutation.data ?? null)
-    setCardUid("")
-    setIsScanning(false)
-    inputRef.current?.focus()
-  }, [cardUid, rfidCheckInMutation])
+    try {
+      const data = await rfidCheckInMutation.mutateAsync(uid)
+      setScanResult(data ?? null)
+    } catch {
+      setScanResult(null)
+    } finally {
+      setCardUid("")
+      setIsScanning(false)
+      inputRef.current?.focus()
+    }
+  }, [cardUid, isScanning, rfidCheckInMutation])
 
   const handleCheckOut = useCallback(async () => {
     const uid = cardUid.trim()
-    if (!uid) return
+    if (!uid || isScanning) return
     setIsScanning(true)
-    await rfidCheckOutMutation.mutateAsync(uid)
-    setScanResult(rfidCheckOutMutation.data ?? null)
-    setCardUid("")
-    setIsScanning(false)
-    inputRef.current?.focus()
-  }, [cardUid, rfidCheckOutMutation])
+    try {
+      const data = await rfidCheckOutMutation.mutateAsync(uid)
+      setScanResult(data ?? null)
+    } catch {
+      setScanResult(null)
+    } finally {
+      setCardUid("")
+      setIsScanning(false)
+      inputRef.current?.focus()
+    }
+  }, [cardUid, isScanning, rfidCheckOutMutation])
 
   const handleManualValidate = useCallback(() => {
     if (!selectedMemberId || !manualReason || !userId) return

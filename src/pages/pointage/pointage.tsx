@@ -564,6 +564,7 @@ export default function PointagePage() {
     },
     onError: (err: Error) => {
       setIsScanning(false)
+      setScanResult(null)
       setRfidInput("")
       addScanLog(null, "Erreur", "denied", err.message)
       toast({ title: "Erreur", description: err.message, variant: "destructive" })
@@ -639,10 +640,11 @@ export default function PointagePage() {
 
   const handleRfidValidate = useCallback(() => {
     const uid = rfidInput.trim()
-    if (!uid) return
+    if (!uid || isScanning) return
     setIsScanning(true)
+    setScanResult(null)
     rfidMutation.mutate(uid)
-  }, [rfidInput, rfidMutation])
+  }, [rfidInput, rfidMutation, isScanning])
 
   const checkoutRfidMutation = useMutation({
     mutationFn: async (uid: string) => {
@@ -723,10 +725,10 @@ export default function PointagePage() {
 
   const handleCheckoutValidate = useCallback(() => {
     const uid = rfidCheckoutInput.trim()
-    if (!uid) return
+    if (!uid || isCheckoutScanning) return
     setIsCheckoutScanning(true)
     checkoutRfidMutation.mutate(uid)
-  }, [rfidCheckoutInput, checkoutRfidMutation])
+  }, [rfidCheckoutInput, checkoutRfidMutation, isCheckoutScanning])
 
   const handlePhoneCheckIn = (memberId: string) => {
     phoneCheckInMutation.mutate(memberId)

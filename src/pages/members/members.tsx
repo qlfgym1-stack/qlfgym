@@ -333,10 +333,10 @@ export default function Members() {
   })
 
   useEffect(() => {
-    if (urlMember && !profileMember) {
+    if (urlMember) {
       setProfileMember(urlMember)
     }
-  }, [urlMember, profileMember])
+  }, [urlMember])
 
   useEffect(() => {
     if (renewTypeId && renewStartDate) {
