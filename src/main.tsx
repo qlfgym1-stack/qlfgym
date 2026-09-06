@@ -1,9 +1,9 @@
 ﻿import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { QueryClient } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import { queryClient } from '@/lib/query-client'
 import { ThemeProvider } from '@/stores/theme'
 import { I18nProvider } from '@/i18n'
 import { OfflineQueueProvider } from '@/stores/offline-queue'
@@ -13,20 +13,6 @@ import { Toaster } from '@/components/ui/toast'
 import { PWAUpdateSystem } from '@/components/ui/update-notification'
 import App from './App'
 import './index.css'
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 120,
-      gcTime: 1000 * 60 * 60,
-      retry: 2,
-      networkMode: 'offlineFirst',
-    },
-    mutations: {
-      networkMode: 'offlineFirst',
-    },
-  },
-})
 
 const SKIP_PERSIST = new Set([
   'members',

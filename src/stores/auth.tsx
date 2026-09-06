@@ -4,7 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Organization, UserRole } from '@/types/supabase'
 import { IS_MOCK } from '@/lib/config'
 import { generateRecoveryCode, storeRecoveryCode, setMockRecoveryData } from '@/lib/recovery'
-import { queryClient } from '@/main'
+import { queryClient } from '@/lib/query-client'
 
 interface Profile {
   id: string; email: string; full_name?: string | null; avatar_url?: string | null
