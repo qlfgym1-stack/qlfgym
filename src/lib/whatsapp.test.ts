@@ -4,6 +4,7 @@ import {
   WA_TEMPLATE_KEYS,
   DEFAULT_TEMPLATES,
   formatPhone,
+  formatWhatsAppPhone,
   getTemplate,
 } from './whatsapp'
 
@@ -14,6 +15,29 @@ describe('formatPhone', () => {
 
   it('returns empty string when no digits', () => {
     expect(formatPhone('abc - ()')).toBe('')
+  })
+})
+
+describe('formatWhatsAppPhone', () => {
+  it('converts local DZ number with leading 0 to international', () => {
+    expect(formatWhatsAppPhone('0555123456')).toBe('213555123456')
+  })
+
+  it('keeps +213 number without leading 0', () => {
+    expect(formatWhatsAppPhone('+213555123456')).toBe('213555123456')
+  })
+
+  it('converts 00213 prefix', () => {
+    expect(formatWhatsAppPhone('00213555123456')).toBe('213555123456')
+  })
+
+  it('handles already-standard international digits', () => {
+    expect(formatWhatsAppPhone('213555123456')).toBe('213555123456')
+  })
+
+  it('returns empty string for invalid or missing number', () => {
+    expect(formatWhatsAppPhone('')).toBe('')
+    expect(formatWhatsAppPhone('12345')).toBe('')
   })
 })
 

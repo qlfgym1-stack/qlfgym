@@ -31,8 +31,17 @@ export function getTemplate(template: string, data: Record<string, string | numb
   )
 }
 
-export function sendWhatsApp(phone: string, message: string): void {
+/** Numéro au format international WhatsApp (E.164, sans 0 initial) : 0XXXXXXXXX → 213XXXXXXXXX. */
+export function formatWhatsAppPhone(phone: string): string {
   const digits = formatPhone(phone)
+  if (digits.length === 12 && digits.startsWith("213")) return digits
+  if (digits.length === 14 && digits.startsWith("00213")) return "213" + digits.slice(5)
+  if (digits.length === 10 && digits.startsWith("0")) return "213" + digits.slice(1)
+  return ""
+}
+
+export function sendWhatsApp(phone: string, message: string): void {
+  const digits = formatWhatsAppPhone(phone)
   if (!digits) return
   const text = encodeURIComponent(message)
   const url = `https://web.whatsapp.com/send?phone=${digits}&text=${text}`
