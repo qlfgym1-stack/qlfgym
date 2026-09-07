@@ -300,6 +300,13 @@ const fr = {
       statusPending: "En attente",
       statusExpired: "Expiré",
       statusCancelled: "Annulé",
+      editSubscriptionDate: "Modifier la date",
+      editSubscriptionDateTitle: "Modifier la date d'abonnement",
+      editSubscriptionDateFor: "Abonnement de",
+      editSubscriptionSuccess: "Dates d'abonnement mises à jour",
+      editSubscriptionError: "Erreur lors de la mise à jour",
+      editSubscriptionRequired: "Les deux dates sont obligatoires",
+      editSubscriptionOrder: "La date de début doit précéder la date de fin",
     },
     history: {
       title: "Historique",

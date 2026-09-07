@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@/hooks/useQuery'
 import { useSupabase } from '@/hooks/useSupabase'
 import { useAuth } from '@/stores/auth'
@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, User, Mail, Phone, MapPin, Cake, Siren, NotebookPen, UserRound, Banknote, CalendarCheck2, ShoppingCart, History, Shield, UserCheck, CreditCard } from 'lucide-react'
+import { Loader2, User, Mail, Phone, MapPin, Cake, Siren, NotebookPen, UserRound, Banknote, CalendarCheck2, ShoppingCart, History, Shield, UserCheck, CreditCard, CalendarClock } from 'lucide-react'
 import { formatDate, formatCurrency, formatDateTime, getInitials, getStatusColor, toUpper, memberFullName, displayPhone } from '@/lib/utils'
 import type { Member } from '@/types/supabase'
+import { EditSubscriptionDatesDialog } from './edit-subscription-dates'
 
 interface MemberProfileDialogProps {
   member: Member | null
@@ -24,6 +25,7 @@ interface MemberProfileDialogProps {
 
 interface ProfileStats {
   currentSub: {
+    id: string | null
     name: string
     status: string
     start_date: string
@@ -67,8 +69,10 @@ function stayLabel(a: { check_in: string | null; check_out: string | null }) {
 export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory, onEdit, onShowRfid }: MemberProfileDialogProps) {
   const t = useT()
   const supabase = useSupabase()
-  const { organization } = useAuth()
+  const { organization, roles } = useAuth()
   const orgId = organization?.id
+  const [editDatesOpen, setEditDatesOpen] = useState(false)
+  const canEditSubscriptionDates = !!orgId && (roles ?? []).some((r) => r.organization_id === orgId && (r.role === 'admin' || r.role === 'receptionist'))
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['member-profile', member?.id],
@@ -76,7 +80,7 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
       if (!member) return { currentSub: null, paymentsCount: 0, paymentsTotal: 0, attendanceCount: 0, posTotal: 0, coach: null, rfidUid: null, recentAttendance: [], recentPos: [] }
       if (IS_MOCK) {
         return {
-          currentSub: { name: '1 Mois', status: 'active', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 86400000 * 30).toISOString(), total_amount: 2400, amount_paid: 2400 },
+          currentSub: { id: null, name: '1 Mois', status: 'active', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 86400000 * 30).toISOString(), total_amount: 2400, amount_paid: 2400 },
           paymentsCount: 3,
           paymentsTotal: 7200,
           attendanceCount: 12,
@@ -142,6 +146,7 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
       return {
         currentSub: subRow
           ? {
+              id: subRow.id,
               name: subRow.subscription_types?.name || '—',
               status: subRow.status,
               start_date: subRow.start_date,
@@ -185,7 +190,8 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
   if (!member) return null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-3">
@@ -235,7 +241,20 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold">{t('members.subscriptions') || 'Abonnement'}</p>
-                  <Badge className={subStatusVariant}>{subStatusLabel}</Badge>
+                  <div className="flex items-center gap-2">
+                    {canEditSubscriptionDates && sub?.id && (
+                      <button
+                        type="button"
+                        onClick={() => setEditDatesOpen(true)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
+                        title={t('members.profile.editSubscriptionDate') || 'Modifier la date d’abonnement'}
+                      >
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {t('members.profile.editSubscriptionDate') || 'Modifier la date'}
+                      </button>
+                    )}
+                    <Badge className={subStatusVariant}>{subStatusLabel}</Badge>
+                  </div>
                 </div>
                 {sub ? (
                   <Card className="p-3">
@@ -350,7 +369,20 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {member && stats?.currentSub?.id && (
+        <EditSubscriptionDatesDialog
+          open={editDatesOpen}
+          onOpenChange={setEditDatesOpen}
+          member={member}
+          subscriptionId={stats.currentSub.id}
+          memberName={memberFullName(member)}
+          currentStart={stats.currentSub.start_date}
+          currentEnd={stats.currentSub.end_date}
+        />
+      )}
+    </>
   )
 }

@@ -240,6 +240,13 @@ const ar = {
       statusPending: "في الانتظار",
       statusExpired: "منتهي",
       statusCancelled: "ملغي",
+      editSubscriptionDate: "تعديل التاريخ",
+      editSubscriptionDateTitle: "تعديل تاريخ الاشتراك",
+      editSubscriptionDateFor: "اشتراك",
+      editSubscriptionSuccess: "تم تحديث تواريخ الاشتراك",
+      editSubscriptionError: "فشل تحديث تواريخ الاشتراك",
+      editSubscriptionRequired: "التاريخان مطلوبان",
+      editSubscriptionOrder: "يجب أن يكون تاريخ البداية قبل تاريخ النهاية",
     },
     history: {
       title: "السجل",

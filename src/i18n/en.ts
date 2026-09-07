@@ -293,6 +293,13 @@ const en = {
       statusPending: "Pending",
       statusExpired: "Expired",
       statusCancelled: "Cancelled",
+      editSubscriptionDate: "Edit dates",
+      editSubscriptionDateTitle: "Edit subscription dates",
+      editSubscriptionDateFor: "Subscription of",
+      editSubscriptionSuccess: "Subscription dates updated",
+      editSubscriptionError: "Failed to update subscription dates",
+      editSubscriptionRequired: "Both dates are required",
+      editSubscriptionOrder: "Start date must be before end date",
     },
     history: {
       title: "History",
