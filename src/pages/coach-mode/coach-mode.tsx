@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
 import { useT } from '@/i18n'
 import { getInitials, toUpper, formatPhone } from '@/lib/utils'
-import { Search, Users, UserCheck, Loader2, X, Plus, UserPlus, DollarSign, ChevronLeft, ChevronRight, History, Pencil } from 'lucide-react'
+import { Search, Users, UserCheck, Loader2, X, Plus, UserPlus, DollarSign, ChevronLeft, ChevronRight, History, Pencil, CalendarDays, Trash2 } from 'lucide-react'
 
 interface Coach {
   id: string
@@ -26,6 +26,21 @@ interface Coach {
   rate_per_member: number | null
   bonus: number | null
   member_count: number
+  active_count: number
+}
+
+interface SessionRow {
+  id: string
+  member_id: string
+  member_name: string
+  member_photo: string | null
+  session_date: string
+  start_time: string
+  end_time: string | null
+  session_type: string | null
+  room: string | null
+  status: 'scheduled' | 'done' | 'cancelled' | 'no_show'
+  notes: string | null
 }
 
 interface MemberRow {
@@ -51,6 +66,10 @@ interface SalaryHistory {
 function formatMonth(date: Date): string {
   const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
   return `${months[date.getMonth()]} ${date.getFullYear()}`
+}
+
+function formatDate(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('fr-DZ', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function formatCurrency(amount: number): string {
@@ -84,7 +103,7 @@ export default function CoachModePage() {
   const [memberSearch, setMemberSearch] = useState('')
   const [addMemberOpen, setAddMemberOpen] = useState(false)
   const [selectedAddMember, setSelectedAddMember] = useState('')
-  const [tab, setTab] = useState<'members' | 'salary'>('members')
+  const [tab, setTab] = useState<'members' | 'salary' | 'sessions'>('members')
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [editSalary, setEditSalary] = useState(false)
   const [salaryInput, setSalaryInput] = useState('')
@@ -94,6 +113,17 @@ export default function CoachModePage() {
   const [cardSalary, setCardSalary] = useState('')
   const [cardRate, setCardRate] = useState('')
   const [cardBonus, setCardBonus] = useState('')
+
+  const [sessionDialog, setSessionDialog] = useState(false)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [sesMember, setSesMember] = useState('')
+  const [sesDate, setSesDate] = useState(new Date().toISOString().slice(0, 10))
+  const [sesStart, setSesStart] = useState('09:00')
+  const [sesEnd, setSesEnd] = useState('10:00')
+  const [sesType, setSesType] = useState('coaching')
+  const [sesRoom, setSesRoom] = useState('')
+  const [sesStatus, setSesStatus] = useState<'scheduled' | 'done' | 'cancelled' | 'no_show'>('scheduled')
+  const [sesNotes, setSesNotes] = useState('')
 
 
   const { data: coaches = [], isLoading: coachesLoading } = useQuery({
@@ -110,16 +140,21 @@ export default function CoachModePage() {
       if (!staffList) return []
       const { data: counts } = await supabase
         .from('members')
-        .select('coach_id')
+        .select('coach_id, status')
         .eq('organization_id', orgId)
         .not('coach_id', 'is', null)
       const countMap: Record<string, number> = {}
+      const activeMap: Record<string, number> = {}
       for (const m of counts ?? []) {
-        if (m.coach_id) countMap[m.coach_id] = (countMap[m.coach_id] ?? 0) + 1
+        if (m.coach_id) {
+          countMap[m.coach_id] = (countMap[m.coach_id] ?? 0) + 1
+          if (m.status === 'active') activeMap[m.coach_id] = (activeMap[m.coach_id] ?? 0) + 1
+        }
       }
       return (staffList ?? []).map(s => ({
         ...s,
         member_count: countMap[s.id] ?? 0,
+        active_count: activeMap[s.id] ?? 0,
       })) as Coach[]
     },
     enabled: !!orgId,
@@ -221,6 +256,131 @@ export default function CoachModePage() {
     },
     onError: (err: Error) => toast({ title: 'Erreur', description: err.message, variant: 'destructive' }),
   })
+
+  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
+    queryKey: ['coach-sessions', orgId, effectiveSelectedCoach],
+    queryFn: async () => {
+      if (!orgId || !effectiveSelectedCoach) return []
+      const { data } = await supabase
+        .from('coach_sessions')
+        .select('id, session_date, start_time, end_time, session_type, room, status, notes, member_id, members(id, first_name, last_name, photo_url)')
+        .eq('organization_id', orgId)
+        .eq('coach_id', effectiveSelectedCoach)
+        .order('session_date', { ascending: false })
+        .order('start_time', { ascending: false })
+      if (!data) return []
+      return data.map((s: any) => ({
+        id: s.id,
+        member_id: s.member_id,
+        member_name: s.members ? `${s.members.first_name} ${s.members.last_name}` : '',
+        member_photo: s.members?.photo_url ?? null,
+        session_date: s.session_date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        session_type: s.session_type,
+        room: s.room,
+        status: s.status as SessionRow['status'],
+        notes: s.notes,
+      })) as SessionRow[]
+    },
+    enabled: !!orgId && !!effectiveSelectedCoach,
+  })
+
+  const saveSessionMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId || !effectiveSelectedCoach || !sesMember) return
+      const payload = {
+        organization_id: orgId,
+        coach_id: effectiveSelectedCoach,
+        member_id: sesMember,
+        session_date: sesDate,
+        start_time: sesStart,
+        end_time: sesEnd || null,
+        session_type: sesType || null,
+        room: sesRoom || null,
+        status: sesStatus,
+        notes: sesNotes || null,
+        created_by: user?.id ?? null,
+      }
+      const { error } = editingSessionId
+        ? await supabase.from('coach_sessions').update(payload).eq('id', editingSessionId)
+        : await supabase.from('coach_sessions').insert(payload)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-sessions'] })
+      toast({ title: editingSessionId ? 'Séance modifiée' : 'Séance enregistrée' })
+      setSessionDialog(false)
+      setEditingSessionId(null)
+    },
+    onError: (err: Error) => toast({ title: 'Erreur', description: err.message, variant: 'destructive' }),
+  })
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase.from('coach_sessions').delete().eq('id', sessionId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-sessions'] })
+      toast({ title: 'Séance supprimée' })
+    },
+    onError: (err: Error) => toast({ title: 'Erreur', description: err.message, variant: 'destructive' }),
+  })
+
+  const setSessionStatusMutation = useMutation({
+    mutationFn: async ({ sessionId, status }: { sessionId: string; status: SessionRow['status'] }) => {
+      const { error } = await supabase.from('coach_sessions').update({ status }).eq('id', sessionId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-sessions'] })
+    },
+    onError: (err: Error) => toast({ title: 'Erreur', description: err.message, variant: 'destructive' }),
+  })
+
+  const canManageSessions = isAdmin || (isCoach && effectiveSelectedCoach === currentUserStaff)
+
+  const openNewSession = () => {
+    setEditingSessionId(null)
+    setSesMember(assignedMembers[0]?.id ?? '')
+    setSesDate(new Date().toISOString().slice(0, 10))
+    setSesStart('09:00')
+    setSesEnd('10:00')
+    setSesType('coaching')
+    setSesRoom('')
+    setSesStatus('scheduled')
+    setSesNotes('')
+    setSessionDialog(true)
+  }
+
+  const openEditSession = (s: SessionRow) => {
+    setEditingSessionId(s.id)
+    setSesMember(s.member_id)
+    setSesDate(s.session_date)
+    setSesStart(s.start_time)
+    setSesEnd(s.end_time ?? '')
+    setSesType(s.session_type ?? 'coaching')
+    setSesRoom(s.room ?? '')
+    setSesStatus(s.status)
+    setSesNotes(s.notes ?? '')
+    setSessionDialog(true)
+  }
+
+  const sessionStatusLabel = (status: string) => {
+    const labels: Record<string, string> = { scheduled: 'Planifiée', done: 'Terminée', cancelled: 'Annulée', no_show: 'Absence' }
+    return labels[status] ?? status
+  }
+
+  const sessionStatusBadge = (status: string) => {
+    const variants: Record<string, any> = { scheduled: 'outline', done: 'default', cancelled: 'secondary', no_show: 'destructive' }
+    return <Badge variant={(variants[status] ?? 'outline')} className="text-[10px] px-1.5 py-0 h-4">{sessionStatusLabel(status)}</Badge>
+  }
+
+  const sessionTypeLabel = (type: string | null) => {
+    const labels: Record<string, string> = { coaching: 'Coaching', fitness: 'Préparation physique', nutrition: 'Nutrition', rehab: 'Rééducation', assessment: 'Évaluation', flexibility: 'Mobilité' }
+    return labels[type ?? ''] ?? type ?? '-'
+  }
 
   const assignMember = useMutation({
     mutationFn: async ({ memberId, coachId }: { memberId: string; coachId: string }) => {
@@ -414,7 +574,7 @@ export default function CoachModePage() {
                           </div>
                           <div className="flex justify-between font-semibold text-foreground pt-1 border-t border-border/30">
                             <span>Total</span>
-                            <span>{formatCurrency((Number(cardSalary) || 0) + (Number(cardRate) || 0) * c.member_count + (Number(cardBonus) || 0))}</span>
+                            <span>{formatCurrency((Number(cardSalary) || 0) + (Number(cardRate) || 0) * c.active_count + (Number(cardBonus) || 0))}</span>
                           </div>
                           <div className="flex gap-1">
                             <Button
@@ -446,11 +606,11 @@ export default function CoachModePage() {
                       ) : (
                         <>
                           <div className="flex justify-between text-muted-foreground">
-                            <span>Fixe {formatCurrency(c.salary ?? 0)} + ({formatCurrency(c.rate_per_member ?? 0)}/adh × {c.member_count}){((c.bonus ?? 0) > 0) ? ` + ${formatCurrency(c.bonus ?? 0)} bonus` : ''}</span>
+                            <span>Fixe {formatCurrency(c.salary ?? 0)} + ({formatCurrency(c.rate_per_member ?? 0)}/adh × {c.active_count}){((c.bonus ?? 0) > 0) ? ` + ${formatCurrency(c.bonus ?? 0)} bonus` : ''}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-foreground mt-1 pt-1 border-t border-border/30">
                             <span>Total</span>
-                            <span>{formatCurrency((c.salary ?? 0) + (c.rate_per_member ?? 0) * c.member_count + (c.bonus ?? 0))}</span>
+                            <span>{formatCurrency((c.salary ?? 0) + (c.rate_per_member ?? 0) * c.active_count + (c.bonus ?? 0))}</span>
                           </div>
                         </>
                       )}
@@ -498,6 +658,13 @@ export default function CoachModePage() {
                       className={tab === 'salary' ? 'font-semibold text-foreground' : 'hover:text-foreground'}
                     >
                       Salaire
+                    </button>
+                    <span>·</span>
+                    <button
+                      onClick={() => setTab('sessions')}
+                      className={tab === 'sessions' ? 'font-semibold text-foreground' : 'hover:text-foreground'}
+                    >
+                      Séances ({sessions.length})
                     </button>
                   </span>
                 </p>
@@ -715,6 +882,67 @@ export default function CoachModePage() {
                 )}
               </div>
             )}
+
+            {tab === 'sessions' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {sessions.length} séance{sessions.length !== 1 ? 's' : ''}
+                  </p>
+                  {canManageSessions && (
+                    <Button size="sm" onClick={openNewSession}>
+                      <Plus className="h-4 w-4 mr-1" /> Nouvelle séance
+                    </Button>
+                  )}
+                </div>
+                {sessionsLoading ? (
+                  <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : sessions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <CalendarDays className="h-12 w-12 mb-4" />
+                    <p>Aucune séance pour ce coach</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border divide-y">
+                    {sessions.map((s: SessionRow) => (
+                      <div key={s.id} className="flex items-center justify-between gap-3 p-3 hover:bg-muted/50">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-9 w-9 shrink-0">
+                            {s.member_photo && <AvatarImage src={s.member_photo} />}
+                            <AvatarFallback className="text-xs">{getInitials(s.member_name.split(' ')[0], s.member_name.split(' ')[1] ?? '')}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{s.member_name}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                              <span>{formatDate(s.session_date)}</span>
+                              <span>·</span>
+                              <span>{s.start_time}{s.end_time ? ` → ${s.end_time}` : ''}</span>
+                              <span>·</span>
+                              <span className="text-foreground/70">{sessionTypeLabel(s.session_type)}</span>
+                              {s.room && (<><span>·</span><span>{s.room}</span></>)}
+                            </div>
+                            {s.notes && <p className="text-xs text-muted-foreground mt-0.5 truncate">{s.notes}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {sessionStatusBadge(s.status)}
+                          {canManageSessions && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSession(s)} title="Modifier">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteSessionMutation.mutate(s.id)} title="Supprimer">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center h-full">
@@ -773,6 +1001,85 @@ export default function CoachModePage() {
                 >
                   {assignMember.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Assigner
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sessionDialog && effectiveSelectedCoach && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={() => setSessionDialog(false)}>
+          <div className="bg-background rounded-lg shadow-lg p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4">{editingSessionId ? 'Modifier la séance' : 'Nouvelle séance'}</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Membre</label>
+                <select
+                  value={sesMember}
+                  onChange={e => setSesMember(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="" disabled>Choisir un membre</option>
+                  {assignedMembers.map((m: MemberRow) => (
+                    <option key={m.id} value={m.id}>{toUpper(m.first_name)} {toUpper(m.last_name)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <Input type="date" value={sesDate} onChange={e => setSesDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Type</label>
+                  <select
+                    value={sesType}
+                    onChange={e => setSesType(e.target.value)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {['coaching', 'fitness', 'nutrition', 'rehab', 'assessment', 'flexibility'].map(ty => (
+                      <option key={ty} value={ty}>{sessionTypeLabel(ty)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Heure de début</label>
+                  <Input type="time" value={sesStart} onChange={e => setSesStart(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Heure de fin</label>
+                  <Input type="time" value={sesEnd} onChange={e => setSesEnd(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Salle / Lieu</label>
+                  <Input type="text" value={sesRoom} onChange={e => setSesRoom(e.target.value)} placeholder="Ex : Salle A" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Statut</label>
+                  <select
+                    value={sesStatus}
+                    onChange={e => setSesStatus(e.target.value as SessionRow['status'])}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {(['scheduled', 'done', 'cancelled', 'no_show'] as const).map(st => (
+                      <option key={st} value={st}>{sessionStatusLabel(st)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notes (optionnel)</label>
+                <Input type="text" value={sesNotes} onChange={e => setSesNotes(e.target.value)} />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setSessionDialog(false)}>Annuler</Button>
+                <Button
+                  onClick={() => saveSessionMutation.mutate()}
+                  disabled={!sesMember || !sesDate || !sesStart || saveSessionMutation.isPending}
+                >
+                  {saveSessionMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Enregistrer
                 </Button>
               </div>
             </div>

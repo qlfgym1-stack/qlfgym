@@ -123,6 +123,12 @@ export interface Database {
         Update: { id?: string; organization_id?: string; staff_id?: string; amount?: number; payment_date?: string; payment_method?: 'cash' | 'transfer' | 'check'; period?: string; notes?: string | null; created_by?: string | null; created_at?: string }
         Relationships: []
       }
+      coach_sessions: {
+        Row: { id: string; organization_id: string; coach_id: string; member_id: string; session_date: string; start_time: string; end_time: string | null; session_type: string | null; room: string | null; status: 'scheduled' | 'done' | 'cancelled' | 'no_show'; notes: string | null; created_by: string | null; created_at: string }
+        Insert: { id?: string; organization_id: string; coach_id: string; member_id: string; session_date: string; start_time: string; end_time?: string | null; session_type?: string | null; room?: string | null; status?: 'scheduled' | 'done' | 'cancelled' | 'no_show'; notes?: string | null; created_by?: string | null; created_at?: string }
+        Update: { id?: string; organization_id?: string; coach_id?: string; member_id?: string; session_date?: string; start_time?: string; end_time?: string | null; session_type?: string | null; room?: string | null; status?: 'scheduled' | 'done' | 'cancelled' | 'no_show'; notes?: string | null; created_by?: string | null; created_at?: string }
+        Relationships: []
+      }
       equipment: {
         Row: { id: string; organization_id: string; name: string; description: string | null; category: string | null; quantity: number; available_quantity: number; purchase_price: number | null; status: string | null; purchase_date: string | null; last_maintenance: string | null; brand: string | null; location: string | null; next_maintenance: string | null; notes: string | null; created_at: string }
         Insert: { id?: string; organization_id: string; name: string; description?: string | null; category?: string | null; quantity?: number; available_quantity?: number; purchase_price?: number | null; status?: string | null; purchase_date?: string | null; last_maintenance?: string | null; brand?: string | null; location?: string | null; next_maintenance?: string | null; notes?: string | null; created_at?: string }
@@ -326,6 +332,7 @@ export type ManualValidation = Tables<'manual_validations'>
 export type Expense = Tables<'expenses'>
 export type Investment = Tables<'investments'>
 export type StaffSalaryPayment = Tables<'staff_salary_payments'>
+export type CoachSession = Tables<'coach_sessions'>
 export type PaymentChange = Tables<'payment_changes'>
 export type WhatsappOutbox = Tables<'whatsapp_outbox'>
 export type AuditLog = Tables<'audit_logs'>

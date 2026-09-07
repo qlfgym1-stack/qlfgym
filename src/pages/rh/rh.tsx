@@ -62,7 +62,7 @@ function formatDateTime(date: string): string {
 export default function RhPage() {
   const supabase = useSupabase()
   const queryClient = useQueryClient()
-  const { organization, user } = useAuth()
+  const { organization, user, roles } = useAuth()
   const { toast } = useToast()
   const t = useT()
   const orgId = organization?.id
@@ -83,6 +83,10 @@ export default function RhPage() {
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
   const [payMethod, setPayMethod] = useState<'cash' | 'transfer' | 'check'>('cash')
   const [payPeriod, setPayPeriod] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [payrollPeriod, setPayrollPeriod] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
@@ -107,6 +111,7 @@ export default function RhPage() {
   }, [staffList, selectedStaff])
 
   const isCoach = selectedStaffData?.role === 'coach'
+  const isAdmin = roles.some(r => r.role === 'admin')
 
   const { data: payments = [] } = useQuery({
     queryKey: ['staff-payments', selectedStaff],
@@ -135,6 +140,47 @@ export default function RhPage() {
     },
     enabled: !!selectedStaff,
   })
+
+  const { data: coachMemberCount = 0 } = useQuery({
+    queryKey: ['rh-coach-member-count', selectedStaff],
+    queryFn: async () => {
+      if (!selectedStaff) return 0
+      const { count } = await supabase
+        .from('members')
+        .select('id', { count: 'exact', head: true })
+        .eq('coach_id', selectedStaff)
+        .eq('status', 'active')
+      return count ?? 0
+    },
+    enabled: !!selectedStaff && isCoach,
+  })
+
+  const { data: coachSnapshots = [] } = useQuery({
+    queryKey: ['rh-coach-snapshots', selectedStaff],
+    queryFn: async () => {
+      if (!selectedStaff) return []
+      const { data } = await supabase
+        .from('coach_salary_history')
+        .select('*')
+        .eq('coach_id', selectedStaff)
+        .order('period', { ascending: false })
+      return (data ?? []).map((s: any) => ({
+        id: s.id,
+        period: s.period,
+        periodMonth: (s.period ?? '').slice(0, 7),
+        fixed_salary: s.fixed_salary,
+        rate_per_member: s.rate_per_member,
+        member_count: s.member_count,
+        variable_amount: s.variable_amount,
+        total_amount: s.total_amount,
+      }))
+    },
+    enabled: !!selectedStaff && isCoach,
+  })
+
+  const selectedSnapshot = coachSnapshots.find((s: any) => s.periodMonth === payrollPeriod)
+  const variableAmount = (Number(rate) || 0) * coachMemberCount
+  const grossAmount = (Number(salary) || 0) + variableAmount + (Number(bonus) || 0)
 
   const updateSalaryMutation = useMutation({
     mutationFn: async () => {
@@ -184,6 +230,56 @@ export default function RhPage() {
       setPaymentDialog(false)
       setPayAmount('')
       setPayNotes('')
+    },
+    onError: (err: Error) => toast({ title: 'Erreur', description: err.message, variant: 'destructive' }),
+  })
+
+  const validatePayMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId || !selectedStaff || !isAdmin) return
+      const fixed = Number(salary) || 0
+      const rRate = Number(rate) || 0
+      const bBonus = Number(bonus) || 0
+      const memberCount = Number(coachMemberCount) || 0
+      const periodDate = `${payrollPeriod}-01`
+      const total = fixed + memberCount * rRate + bBonus
+      const { error: snapErr } = await supabase
+        .from('coach_salary_history')
+        .upsert({
+          organization_id: orgId,
+          coach_id: selectedStaff,
+          period: periodDate,
+          fixed_salary: fixed,
+          rate_per_member: rRate,
+          member_count: memberCount,
+          variable_amount: memberCount * rRate,
+          total_amount: total,
+        }, { onConflict: 'coach_id,period' })
+      if (snapErr) throw snapErr
+      const { data: existing } = await supabase
+        .from('staff_salary_payments')
+        .select('id')
+        .eq('staff_id', selectedStaff)
+        .eq('period', payrollPeriod)
+        .limit(1)
+      if ((existing ?? []).length === 0) {
+        const { error: payErr } = await supabase.from('staff_salary_payments').insert({
+          organization_id: orgId,
+          staff_id: selectedStaff,
+          amount: total,
+          payment_date: new Date().toISOString().slice(0, 10),
+          payment_method: 'cash',
+          period: payrollPeriod,
+          notes: 'Paie clôturée coach',
+          created_by: user?.id ?? null,
+        })
+        if (payErr) throw payErr
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rh-coach-snapshots'] })
+      queryClient.invalidateQueries({ queryKey: ['staff-payments'] })
+      toast({ title: 'Paie validée' })
     },
     onError: (err: Error) => toast({ title: 'Erreur', description: err.message, variant: 'destructive' }),
   })
@@ -348,9 +444,25 @@ export default function RhPage() {
                         onChange={e => setBonus(e.target.value.replace(/\D/g, ''))}
                       />
                     </div>
+                    {isCoach && (
+                      <div className="space-y-1 rounded-md bg-muted/50 px-3 py-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Fixe</span>
+                          <span>{formatCurrency(Number(salary) || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Prime ({coachMemberCount} adhérents × {(Number(rate) || 0).toLocaleString('fr-DZ')})</span>
+                          <span>{formatCurrency(variableAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Bonus</span>
+                          <span>{formatCurrency(Number(bonus) || 0)}</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
                       <span className="text-muted-foreground">Total salaire</span>
-                      <span className="font-semibold">{formatCurrency((Number(salary) || 0) + (Number(bonus) || 0))}</span>
+                      <span className="font-semibold">{formatCurrency(grossAmount)}</span>
                     </div>
                     <div className="flex items-center justify-between pt-1">
                       <div>
@@ -373,6 +485,79 @@ export default function RhPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {isCoach && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <History className="h-4 w-4" />
+                        Clôture de paie
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Période de paie</label>
+                        <Input
+                          type="month"
+                          value={payrollPeriod}
+                          onChange={e => setPayrollPeriod(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1 rounded-md bg-muted/50 px-3 py-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Adhérents actifs</span>
+                          <span className="font-semibold">{coachMemberCount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Salaire fixe</span>
+                          <span>{formatCurrency(Number(salary) || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Prime (taux × adhérents)</span>
+                          <span>{formatCurrency(variableAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Bonus</span>
+                          <span>{formatCurrency(Number(bonus) || 0)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-1 mt-1">
+                          <span className="font-medium">Salaire brut</span>
+                          <span className="font-bold">{formatCurrency(grossAmount)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => validatePayMutation.mutate()}
+                          disabled={!isAdmin || validatePayMutation.isPending}
+                        >
+                          {validatePayMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Valider la paie
+                        </Button>
+                        {selectedSnapshot ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-green-600 border-green-600/40">Déjà validée</Badge>
+                        ) : !isAdmin ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">Droits insuffisants</Badge>
+                        ) : null}
+                      </div>
+                      {coachSnapshots.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1.5">Historique</p>
+                          <div className="rounded-md border max-h-36 overflow-auto">
+                            {coachSnapshots.map((s: any) => (
+                              <div key={s.id} className="flex items-center justify-between px-3 py-1.5 border-b last:border-0 text-xs">
+                                <span className="font-medium">{s.periodMonth}</span>
+                                <span className="text-muted-foreground">{s.member_count} adhérents</span>
+                                <span className="font-semibold">{formatCurrency(s.total_amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
 

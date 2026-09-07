@@ -168,7 +168,7 @@ serve(async (req) => {
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser(userData)
         if (createError) throw createError
 
-        const allowedRoles = ['staff', 'coach', 'admin']
+        const allowedRoles = ['staff', 'coach', 'admin', 'receptionist', 'cleaner']
         const role = allowedRoles.includes(params.role) ? params.role : 'staff'
         const { error: roleError } = await supabase.from('user_roles').insert({
           user_id: newUser.user.id,
@@ -285,7 +285,7 @@ serve(async (req) => {
         }
 
         if (role && organization_id) {
-          const allowedRoles = ['staff', 'coach', 'admin']
+          const allowedRoles = ['staff', 'coach', 'admin', 'receptionist', 'cleaner']
           if (!allowedRoles.includes(role)) {
             return new Response(JSON.stringify({ error: 'Invalid role' }), {
               status: 400,
