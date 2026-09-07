@@ -264,3 +264,17 @@
 1. **IMMÉDIAT (6h)** : JWT validation EFs, RPCs authorization, xlsx CVE, recovery code exposure, hash constant-time, payment-reminder fix
 2. **HAUTE (6h)** : i18n fr.ts, ErrorBoundary, recovery.tsx fix, Settings DB, OfflineQueue persist, Search fix, Photos RLS, CORS
 3. **MOYENNE (10h)** : Logo compression, PWA icons, framer-motion lazy, Dashboard N+1, sign-in i18n, tsconfig strict, Git branches
+
+## Latest (07/09/2026)
+- **Crise corruption volume `M:` + changement de source** — le disque `M:\` corrompt les fichiers en temps réel (17 fichiers source/migrations remplis de NULs — `members.tsx`, `pointage.tsx`, `main.tsx`, `auth.tsx`, `dashboard.tsx`, `useAccountingData.ts`, `useProfitabilityData.ts`, migrations 00112/00113...) et l'objet git `47dbf22` était corrompu localement sur `M:`. Décision : **`M:` gelé en lecture seule** (ne rien y écrire). La source canonique est désormais **`C:\Users\wahra\Desktop\dinatek`** (tout est enregistré là + Supabase + GitHub). Le contenu était déjà poussé sur GitHub avant la corruption ; la copie `C:` a été ramenée à `47dbf22` (fast-forward depuis origin, arbre sain, 0 corruption). Backups sains : `C:\Users\wahra\Documents\Default Project\` (`fix-encaissements-07-09`, `fix-subscription-dates-07-09`, `etat-31-08`, `rfid-fix`).
+- **Fix Encaissements (commit `47dbf22`)** — dédoublonnage abonnements POS dans dashboard/compta/rentabilité : util `src/lib/ledger-dedupe.ts` (+16 tests), `dashboard.tsx`, `useAccountingData.ts`, `useProfitabilityData.ts`, `encaissement.tsx` ; migration `00113_invoice_sequences_rls.sql` appliquée (RLS activée, policy `staff_read_invoice_sequences`).
+- **Modifier la date d'abonnement (commit `0bd4f3d`)** — fonctionnalité sur la fiche membre, réservée à **admin + receptionist** :
+  - Migration `00114_subscription_dates_edit.sql` (appliquée) : helper `is_admin_or_receptionist(p_org_id)` + RPC `update_subscription_dates(p_subscription_id, p_organization_id, p_start_date, p_end_date)` RETURNS jsonb — check de rôle serveur (pas SECURITY DEFINER, RLS appliquée), verrou `FOR UPDATE`, dates obligatoires + `start <= end`, recalcul statut `active`/`expired` selon `end_date` vs `CURRENT_DATE` (préserve `pending_payment`/`cancelled`), réactivation membre `inactive → active` si l'abonnement redevient actif (précédent 00106).
+  - UI : nouveau `src/pages/members/edit-subscription-dates.tsx` (`EditSubscriptionDatesDialog` — dates préremplies, `<Input type="date">`, validation client, `useMutation` RPC, invalidation queries, toast) ; `member-profile.tsx` : bouton « Modifier la date » dans la carte abonnement (visible seulement si `roles` contient `admin`/`receptionist` de l'org + abonnement avec id), dialog rendu hors `DialogContent` (fragment racine).
+  - i18n FR/EN/AR : clés `members.profile.editSubscriptionDate*`.
+  - Vérifs : `npx tsc --noEmit` ✅ zéro erreur, `npx vitest --run` ✅ (1 test flaky connu non lié : `diagnostic.test.ts` « generates unique IDs » — suffixes 4-hex 16 bits, 3/3 passes au re-run), `npx vite build` ✅ (128 precache).
+
+## Critical Context (mise à jour 07/09/2026)
+- Chemin de travail canonique : `C:\Users\wahra\Desktop\dinatek` (branche `deploy/member-insights`, remote `https://github.com/qlfgym1-stack/qlfgym.git`).
+- Supabase : migrations appliquées jusqu'à `00114` ; Edge Functions 8 déployées (dont `ai-chat` avec secret `OPENROUTER_API_KEY`).
+- Le test `diagnostic.test.ts` de `generateDiagId` est intrinsèquement flaky (collision sur 4 hex chars, ~2%) — à fiabiliser plus tard si besoin (suffix plus long ou timestamp avec ms).
