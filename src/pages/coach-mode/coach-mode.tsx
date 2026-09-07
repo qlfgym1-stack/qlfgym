@@ -27,6 +27,7 @@ interface Coach {
   bonus: number | null
   member_count: number
   active_count: number
+  member_names: { first_name: string; last_name: string; status: string }[]
 }
 
 interface SessionRow {
@@ -151,10 +152,25 @@ export default function CoachModePage() {
           if (m.status === 'active') activeMap[m.coach_id] = (activeMap[m.coach_id] ?? 0) + 1
         }
       }
+      const { data: memberNames } = await supabase
+        .from('members')
+        .select('first_name, last_name, coach_id, status')
+        .eq('organization_id', orgId)
+        .not('coach_id', 'is', null)
+      const namesMap: Record<string, { first_name: string; last_name: string; status: string }[]> = {}
+      for (const m of memberNames ?? []) {
+        if (!m.coach_id) continue
+        if (!namesMap[m.coach_id]) namesMap[m.coach_id] = []
+        namesMap[m.coach_id].push({ first_name: m.first_name, last_name: m.last_name, status: m.status })
+      }
+      for (const k of Object.keys(namesMap)) {
+        namesMap[k].sort((a, b) => (a.first_name + ' ' + a.last_name).localeCompare(b.first_name + ' ' + b.last_name))
+      }
       return (staffList ?? []).map(s => ({
         ...s,
         member_count: countMap[s.id] ?? 0,
         active_count: activeMap[s.id] ?? 0,
+        member_names: namesMap[s.id] ?? [],
       })) as Coach[]
     },
     enabled: !!orgId,
@@ -611,6 +627,19 @@ export default function CoachModePage() {
                           <div className="flex justify-between font-semibold text-foreground mt-1 pt-1 border-t border-border/30">
                             <span>Total</span>
                             <span>{formatCurrency((c.salary ?? 0) + (c.rate_per_member ?? 0) * c.active_count + (c.bonus ?? 0))}</span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {c.member_names.slice(0, 3).map((mn, i) => (
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                                {toUpper(mn.first_name)} {toUpper(mn.last_name)}
+                              </span>
+                            ))}
+                            {c.member_names.length > 3 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">+{c.member_names.length - 3}</span>
+                            )}
+                            {c.member_names.length === 0 && (
+                              <span className="text-[10px] text-muted-foreground/60">Aucun adhérent affilié</span>
+                            )}
                           </div>
                         </>
                       )}

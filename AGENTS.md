@@ -12,6 +12,7 @@
 - Compatible Supabase Auth, RLS, React 18, TypeScript strict
 - Vérifier avec `npx tsc --noEmit` et `npx vitest --run` après chaque correction
 - **Après chaque correction : enregistrer automatiquement et TOUT LE TEMPS** — 1) en local, 2) commit + push GitHub, 3) appliquer le changement sur Supabase, 4) créer et pousser la migration Supabase correspondante (si le changement touche la base)
+- **SOURCE DE DÉVELOPPEMENT UNIQUE : `C:\Users\wahra\Desktop\dinatek`** — tout développement/enregistrement se fait exclusivement sur `C:\` puis GitHub + Supabase. Ne JAMAIS utiliser `M:\Users\Click\Desktop\dinatek` comme source (disque `M:` corrompt les fichiers en temps réel — 8 fichiers remplis de NULs le 07/09 ; déjà corrigés par synchro C:→M: mais récidive possible). En cas de réparation de la copie M:, toujours recopier depuis `C:` (source de vérité).
 - **NE JAMAIS déployer sur Vercel sans consulter l'utilisateur d'abord** — toujours demander confirmation avant `vercel --prod`
 
 ## Progress
@@ -280,6 +281,7 @@
   - **Formule** : `Salaire brut = Salaire fixe + (nb adhérents actifs affiliés × prime par adhérent) + bonus exceptionnel` — calcul auto depuis la BD (pas de saisie manuelle du nombre), snapshot par période immuable, historique conservé.
   - **EF `admin-manage-users`** : `allowedRoles` élargis à `['staff','coach','admin','receptionist','cleaner']` sur le path **create** ET **update** (création du compte « Réception » via Admin → Utilisateurs désormais possible) — **EF REDÉPLOYÉE** (token `SUPABASE_ACCESS_TOKEN` fourni par l'utilisateur le 07/09) ; clés i18n `coachMode.*` + `rh.*` nouvelles en FR/EN/AR (sections ajoutées aussi en arabe).
   - Vérifs : tsc ✅, vitest ✅ 216/216, build ✅ (128 precache), migration vérifiée (table 1 + 3 policies + 4 index).
+- **Adhérents par noms sur les cartes coach (commit à venir)** — la requête `coaches-with-count` sélectionne désormais les noms des membres affiliés (`first_name, last_name, coach_id, status`) ; chaque carte coach affiche en bas les **noms des adhérents affiliés** triés alphabétiquement (jusqu'à 3 + « +N » ou « Aucun adhérent affilié »), en plus du badge de comptage et du total salaire. `M:` rétabli jour 07/09 (8 fichiers corrompus restaurés depuis C:), et `C:` déclaré source de développement unique.
 
 ## Critical Context (mise à jour 07/09/2026)
 - Chemin de travail canonique : `C:\Users\wahra\Desktop\dinatek` (branche `deploy/member-insights`, remote `https://github.com/qlfgym1-stack/qlfgym.git`).
