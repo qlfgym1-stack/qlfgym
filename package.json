@@ -3,6 +3,9 @@
   "private": true,
   "version": "2.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "node scripts/update-version.cjs && vite",
     "build": "node scripts/update-version.cjs --release && tsc -b && vite build",
@@ -70,5 +73,9 @@
     "vite": "^6.0.5",
     "vite-plugin-pwa": "^0.21.1",
     "vitest": "^2.1.8"
+  },
+  "allowScripts": {
+    "core-js@3.49.0": true,
+    "esbuild": true
   }
 }
