@@ -52,7 +52,7 @@ export default function SignUp() {
     if (code) {
       setRecoveryCode(code)
     } else {
-      toast({ title: 'Account created', description: 'Welcome to QLF GYM!' })
+      toast({ title: 'Account created', description: 'Welcome to Fitmanager Pro Dz!' })
       navigate('/dashboard', { replace: true })
     }
   }
@@ -104,7 +104,7 @@ export default function SignUp() {
               <Dumbbell className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold">
-              <span className="text-gradient">QLF GYM</span>
+              <span className="text-gradient">Fitmanager Pro Dz</span>
             </span>
           </motion.div>
           <div className="space-y-8">
@@ -155,7 +155,7 @@ export default function SignUp() {
             transition={{ duration: 0.6, delay: 1 }}
             className="text-xs text-white/20"
           >
-            &copy; 2026 QLF GYM. All rights reserved.
+            &copy; 2026 Fitmanager Pro Dz. All rights reserved.
           </motion.p>
         </div>
       </div>
@@ -186,7 +186,7 @@ export default function SignUp() {
               <Dumbbell className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-bold">
-              <span className="text-gradient">QLF GYM</span>
+              <span className="text-gradient">Fitmanager Pro Dz</span>
             </span>
           </div>
           <Card className="shadow-2xl glass-card gradient-border">

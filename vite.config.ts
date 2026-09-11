@@ -29,8 +29,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'favicon-32.png', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'QLF GYM',
-        short_name: 'QLF GYM',
+        name: 'Fitmanager Pro Dz',
+        short_name: 'Fitmanager Pro Dz',
         description: 'Application de gestion complète pour salles de sport',
         theme_color: '#10b981',
         background_color: '#0a0a0a',

@@ -1,7 +1,6 @@
-# Dinateck Gym - Gestion de Salle de Sport
+# Fitmanager Pro Dz - Gestion de Salle de Sport
 
 Application SaaS de gestion de salle de fitness (PWA).
-- **URL** : https://sport.dolisoft.com
 - **Stack** : React + Vite + Supabase + Workbox
 - **Langues** : Français, Arabe
 

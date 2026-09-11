@@ -285,7 +285,7 @@ export default function SettingsPage() {
                 <Hash className="h-8 w-8" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">QLF GYM</h3>
+                <h3 className="text-xl font-bold">Fitmanager Pro Dz</h3>
                 <p className="text-sm text-muted-foreground">{t("settings.version")} {localVersion.version}</p>
                 <p className="text-sm text-muted-foreground">{t("settings.build")} {localVersion.build}</p>
               </div>

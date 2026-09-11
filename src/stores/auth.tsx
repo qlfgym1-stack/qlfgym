@@ -60,7 +60,7 @@ function isRlsError(err: unknown): boolean {
 const MOCK_ADMIN: AuthState = {
   user: { id: 'mock-admin-id', email: 'MoussaMohamedelmabrouk@gmail.com', app_metadata: {}, user_metadata: { full_name: 'Moussa Mohamed Elmabrouk' }, aud: 'authenticated', created_at: new Date().toISOString() } as any,
   profile: { id: 'mock-admin-id', email: 'MoussaMohamedelmabrouk@gmail.com', full_name: 'Moussa Mohamed Elmabrouk' },
-  organization: { id: 'mock-org-id', name: 'QLF GYM', slug: 'qlf-gym', logo_url: null, address: null, phone: null, email: 'MoussaMohamedelmabrouk@gmail.com', created_at: new Date().toISOString(), coach_default_salary: 0, coach_default_rate_per_member: 0 },
+  organization: { id: 'mock-org-id', name: 'Fitmanager Pro Dz', slug: 'qlf-gym', logo_url: null, address: null, phone: null, email: 'MoussaMohamedelmabrouk@gmail.com', created_at: new Date().toISOString(), coach_default_salary: 0, coach_default_rate_per_member: 0 },
   roles: [{ id: 'mock-role-id', user_id: 'mock-admin-id', organization_id: 'mock-org-id', role: 'admin', created_at: new Date().toISOString() }],
   isLoading: false, isAuthenticated: true, authError: null,
 }

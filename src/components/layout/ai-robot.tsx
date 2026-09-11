@@ -75,7 +75,7 @@ function RobotChatWindow({
       className="qlf-panel"
       style={{ left, top }}
       role="dialog"
-      aria-label="Assistant IA QLF"
+      aria-label="Assistant IA Fitmanager Pro Dz"
     >
       <header className="qlf-panel-head">
         <div className="qlf-panel-title">
@@ -296,8 +296,8 @@ export function AiFloatingRobot() {
         ref={wrapRef}
         role="button"
         tabIndex={0}
-        aria-label="Assistant IA QLF"
-        title="Assistant IA QLF"
+        aria-label="Assistant IA Fitmanager Pro Dz"
+        title="Assistant IA Fitmanager Pro Dz"
         onKeyDown={handleKey}
         className={robotClass}
         style={

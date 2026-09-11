@@ -98,7 +98,7 @@ export default function SignIn() {
             transition={{ duration: 0.5 }}
             className="mb-4 mt-16"
           >
-            <img src="/QLG_3D-removebg-preview-opt.png" alt="QLF GYM" className="h-32 w-auto drop-shadow-lg" />
+            <img src="/QLG_3D-removebg-preview-opt.png" alt="Fitmanager Pro Dz" className="h-32 w-auto drop-shadow-lg" />
           </motion.div>
 
           {/* Welcome */}
@@ -180,7 +180,7 @@ export default function SignIn() {
         >
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2 mb-6">
-            <img src="/QLG_3D-removebg-preview-opt.png" alt="QLF GYM" className="h-12 w-auto drop-shadow-lg" />
+            <img src="/QLG_3D-removebg-preview-opt.png" alt="Fitmanager Pro Dz" className="h-12 w-auto drop-shadow-lg" />
           </div>
 
           {/* Form card */}
@@ -189,7 +189,7 @@ export default function SignIn() {
             <div className="flex justify-center mb-4">
               <picture>
                 <source srcSet="/LOGO QLForiginal.webp" type="image/webp" />
-                <img src="/LOGO QLForiginal-opt.png" alt="FitManagerPro" className="h-28 w-auto drop-shadow-xl" />
+                <img src="/LOGO QLForiginal-opt.png" alt="Fitmanager Pro Dz" className="h-28 w-auto drop-shadow-xl" />
               </picture>
             </div>
 
