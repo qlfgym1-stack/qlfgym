@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: #eef2ff;
-    --foreground: #101828;
-    --card: #ffffff;
-    --card-foreground: #101828;
-    --popover: #ffffff;
-    --popover-foreground: #101828;
-    --primary: #054AC2;
+    --background: #F8FAFC;
+    --foreground: #0F172A;
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+    --primary: #2563EB;
     --primary-foreground: #ffffff;
-    --secondary: #043da8;
+    --secondary: #7C3AED;
     --secondary-foreground: #ffffff;
-    --accent: #f59e0b;
+    --accent: #38BDF8;
     --accent-foreground: #ffffff;
-    --muted: #e8edf9;
+    --muted: #e2e8f0;
     --muted-foreground: #475467;
     --destructive: #dc2626;
     --destructive-foreground: #ffffff;
-    --border: #dbe3f0;
-    --input: #dbe3f0;
-    --ring: #054AC2;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #2563EB;
     --success: #10b981;
     --success-foreground: #ffffff;
     --warning: #f59e0b;
@@ -31,25 +31,25 @@
   }
 
   .dark {
-    --background: #0b0f1a;
-    --foreground: #e5e9f0;
-    --card: rgba(15, 20, 35, 0.85);
-    --card-foreground: #e5e9f0;
-    --popover: #0f1522;
-    --popover-foreground: #e5e9f0;
-    --primary: #2563eb;
+    --background: #080D18;
+    --foreground: #F8FAFC;
+    --card: #111827;
+    --card-foreground: #F8FAFC;
+    --popover: #111827;
+    --popover-foreground: #F8FAFC;
+    --primary: #3B82F6;
     --primary-foreground: #ffffff;
-    --secondary: #043da8;
+    --secondary: #8B5CF6;
     --secondary-foreground: #ffffff;
-    --accent: #f59e0b;
+    --accent: #38BDF8;
     --accent-foreground: #ffffff;
-    --muted: #161c2b;
+    --muted: #1E293B;
     --muted-foreground: #94a3b8;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --border: rgba(37, 99, 235, 0.16);
-    --input: rgba(37, 99, 235, 0.16);
-    --ring: #3b82f6;
+    --border: rgba(59, 130, 246, 0.18);
+    --input: rgba(59, 130, 246, 0.18);
+    --ring: #3B82F6;
     --success: #10b981;
     --success-foreground: #ffffff;
     --warning: #f59e0b;
@@ -65,17 +65,17 @@
     @apply bg-background text-foreground;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79, 70, 229, 0.14), transparent),
-      radial-gradient(ellipse 50% 30% at 80% 20%, rgba(37, 99, 235, 0.10), transparent),
-      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(168, 85, 247, 0.08), transparent);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.10), transparent),
+      radial-gradient(ellipse 50% 30% at 80% 20%, rgba(56, 189, 248, 0.12), transparent),
+      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(124, 58, 237, 0.08), transparent);
     background-attachment: fixed;
   }
 
   .dark body {
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
-      radial-gradient(ellipse 50% 30% at 80% 20%, rgba(37, 99, 235, 0.08), transparent),
-      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(168, 85, 247, 0.06), transparent);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.10), transparent),
+      radial-gradient(ellipse 50% 30% at 80% 20%, rgba(56, 189, 248, 0.08), transparent),
+      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(139, 92, 246, 0.06), transparent);
   }
 
   body::before {
