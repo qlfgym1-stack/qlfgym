@@ -106,7 +106,7 @@ export default function SignIn() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-sm font-semibold tracking-[0.15em] uppercase text-[#054AC2] mb-4"
+            className="text-sm font-semibold tracking-[0.15em] uppercase text-primary mb-4"
           >
             {t('auth.welcome')}
           </motion.p>
@@ -119,7 +119,7 @@ export default function SignIn() {
             className="text-5xl font-bold leading-[1.1] text-white mb-5"
           >
             {t('auth.manageYourGym')}<br />
-            <span className="text-[#054AC2]">{t('auth.withEase')}</span>
+            <span className="text-primary">{t('auth.withEase')}</span>
           </motion.h1>
 
           {/* Description */}
@@ -148,7 +148,7 @@ export default function SignIn() {
               { icon: "🔒", title: t('auth.gridRfid') },
             ].map((item, i) => (
               <div key={i} className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-xl bg-[#054AC2]/15 border border-[#054AC2]/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center">
                   <span className="text-2xl">{item.icon}</span>
                 </div>
                 <span className="text-xs font-semibold text-white/80 tracking-wider text-center">{item.title}</span>
@@ -184,7 +184,7 @@ export default function SignIn() {
           </div>
 
           {/* Form card */}
-          <div className="bg-[#0a0f1a]/90 backdrop-blur-xl border border-[#054AC2]/30 rounded-2xl p-8 shadow-2xl shadow-[#054AC2]/10">
+          <div className="bg-card/90 backdrop-blur-xl border border-primary/30 rounded-2xl p-8 shadow-2xl shadow-primary/10">
             {/* Logo */}
             <div className="flex justify-center mb-4">
               <picture>
@@ -213,7 +213,7 @@ export default function SignIn() {
                           <Input
                             type="text"
                             placeholder="email, téléphone ou nom d'utilisateur"
-                            className="h-11 pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#054AC2] focus:ring-[#054AC2]/30"
+                            className="h-11 pl-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary focus:ring-primary/30"
                             {...field}
                           />
                         </div>
@@ -236,7 +236,7 @@ export default function SignIn() {
                           <Input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="••••••••"
-                            className="h-11 pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#054AC2] focus:ring-[#054AC2]/30"
+                            className="h-11 pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary focus:ring-primary/30"
                             {...field}
                           />
                           <button
@@ -256,7 +256,7 @@ export default function SignIn() {
                 {/* Submit */}
                 <Button
                   type="submit"
-                  className="w-full h-11 bg-[#054AC2] hover:bg-[#043da8] text-white font-semibold text-sm mt-2"
+                  className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold text-sm mt-2"
                   disabled={form.formState.isSubmitting}
                 >
                   {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -269,7 +269,7 @@ export default function SignIn() {
             <div className="mt-5 text-center text-sm text-white/50 space-y-2">
               <p>
                 {t('auth.forgotPassword')}{' '}
-                <Link to="/auth/recovery" className="text-[#054AC2] hover:text-[#054AC2]/80 font-semibold">
+                <Link to="/auth/recovery" className="text-primary hover:text-primary/80 font-semibold">
                   {t('auth.reset')}
                 </Link>
               </p>
@@ -277,7 +277,7 @@ export default function SignIn() {
                 <button
                   type="button"
                   onClick={openRecoveryDialog}
-                  className="text-[#054AC2] hover:text-[#054AC2]/80 font-semibold"
+                  className="text-primary hover:text-primary/80 font-semibold"
                 >
                   {t('auth.getRecoveryCode')}
                 </button>
@@ -289,7 +289,7 @@ export default function SignIn() {
 
       {/* Recovery code dialog */}
       <Dialog open={recoveryDialogOpen} onOpenChange={setRecoveryDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-[#0a0f1a] border border-[#054AC2]/30 text-white">
+        <DialogContent className="sm:max-w-md bg-card border border-primary/30 text-white">
           <DialogHeader>
             <DialogTitle>{t('auth.recoveryTitle')}</DialogTitle>
             <DialogDescription className="text-white/50">
@@ -304,12 +304,12 @@ export default function SignIn() {
                 placeholder="votre@email.com"
                 value={recoveryEmail}
                 onChange={(e) => setRecoveryEmail(e.target.value)}
-                className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-[#054AC2] focus:ring-[#054AC2]/30"
+                className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary focus:ring-primary/30"
               />
               <Button
                 onClick={handleGenerateCode}
                 disabled={isGenerating || !recoveryEmail}
-                className="w-full h-11 bg-[#054AC2] hover:bg-[#043da8] text-white"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-white"
               >
                 {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {t('auth.generateCode')}
@@ -317,11 +317,11 @@ export default function SignIn() {
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              <div className="bg-white/5 border border-[#054AC2]/20 rounded-lg p-4">
+              <div className="bg-white/5 border border-primary/20 rounded-lg p-4">
                 <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2 text-center">
                   {t('auth.yourRecoveryCode')}
                 </p>
-                <p className="text-2xl font-mono font-bold text-center text-[#054AC2] tracking-widest">
+                <p className="text-2xl font-mono font-bold text-center text-primary tracking-widest">
                   {generatedCode}
                 </p>
               </div>
@@ -332,7 +332,7 @@ export default function SignIn() {
               </div>
               <Button
                 onClick={() => setRecoveryDialogOpen(false)}
-                className="w-full h-11 bg-[#054AC2] hover:bg-[#043da8] text-white"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-white"
               >
                 {t('auth.savedCodeButton')}
               </Button>

@@ -25,9 +25,9 @@ const INVESTMENT_CATEGORIES: Record<string, string> = {
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  subscriptions: "#3b82f6",
-  pos: "#10b981",
-  other: "#8b5cf6",
+  subscriptions: "#3B82F6",
+  pos: "#38BDF8",
+  other: "#8B5CF6",
 }
 
 type RawPayment = {
