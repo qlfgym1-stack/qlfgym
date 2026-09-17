@@ -148,9 +148,13 @@ export default function PointagePage() {
 
   useEffect(() => {
     if (!orgId) return
-    ;(supabase.rpc as any)("auto_close_stale_attendances").catch((e: unknown) =>
-      console.warn('auto_close_stale_attendances failed:', e)
-    )
+    ;(async () => {
+      try {
+        await (supabase.rpc as any)("auto_close_stale_attendances")
+      } catch (e) {
+        console.warn('auto_close_stale_attendances failed:', e)
+      }
+    })()
   }, [orgId, supabase])
 
   const [searchQuery, setSearchQuery] = useState("")
