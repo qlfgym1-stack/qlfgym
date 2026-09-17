@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
   'https://qlfgym.vercel.app',
+  'https://fitmanager-pro-dz-eight.vercel.app',
+  'https://fitmanager-pro-dz.vercel.app',
   'https://qlfgym1-stack.github.io',
   'http://localhost:5173',
   'http://localhost:3000',

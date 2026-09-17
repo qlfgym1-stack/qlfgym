@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
   'https://qlfgym.vercel.app',
+  'https://fitmanager-pro-dz-eight.vercel.app',
+  'https://fitmanager-pro-dz.vercel.app',
   'https://qlfgym1-stack.github.io',
   'http://localhost:5173',
   'http://localhost:3000',
@@ -86,8 +88,11 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
-    const openrouterKey = Deno.env.get('OPENROUTER_API_KEY')
-    if (!supabaseUrl || !supabaseAnonKey || !openrouterKey) {
+    const openrouterKeys = [
+      Deno.env.get('OPENROUTER_API_KEY'),
+      Deno.env.get('OPENROUTER_API_KEY_BACKUP'),
+    ].filter((k): k is string => typeof k === 'string' && k.length > 0)
+    if (!supabaseUrl || !supabaseAnonKey || openrouterKeys.length === 0) {
       return json({ error: 'Server configuration error' }, 500, cors)
     }
 
@@ -142,53 +147,61 @@ serve(async (req) => {
     let lastText = ''
     let lastModel = ''
     let tried = 0
+    let unauthorized = false
 
-    for (const candidate of candidates) {
-      lastModel = candidate
-      tried += 1
-      let response: Response
-      try {
-        response = await fetch(OPENROUTER_API_URL, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${openrouterKey}`,
-            'HTTP-Referer': 'https://qlfgym.vercel.app',
-            'X-Title': 'QLF GYM',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: candidate,
-            messages: fullMessages,
-            max_tokens: 200,
-            temperature: 0.3,
-          }),
-          signal: AbortSignal.timeout(15000),
-        })
-      } catch (fetchErr) {
-        // Timeout / réseau : on tente le modèle suivant.
-        lastStatus = 0
-        lastText = `network error: ${(fetchErr as Error).message}`
-        continue
-      }
-
-      if (response.ok) {
-        const data = await response.json()
-        const content = data?.choices?.[0]?.message?.content ?? null
-        if (content) {
-          return json({ content, model: candidate }, 200, cors)
+    for (const key of openrouterKeys) {
+      for (const candidate of candidates) {
+        lastModel = candidate
+        tried += 1
+        let response: Response
+        try {
+          response = await fetch(OPENROUTER_API_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${key}`,
+              'HTTP-Referer': 'https://fitmanager-pro-dz-eight.vercel.app',
+              'X-Title': 'QLF GYM',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: candidate,
+              messages: fullMessages,
+              max_tokens: 200,
+              temperature: 0.3,
+            }),
+            signal: AbortSignal.timeout(15000),
+          })
+        } catch (fetchErr) {
+          // Timeout / réseau : on tente le modèle suivant.
+          lastStatus = 0
+          lastText = `network error: ${(fetchErr as Error).message}`
+          continue
         }
-        lastStatus = 502
-        lastText = 'empty AI response'
-        continue
+
+        if (response.ok) {
+          const data = await response.json()
+          const content = data?.choices?.[0]?.message?.content ?? null
+          if (content) {
+            return json({ content, model: candidate }, 200, cors)
+          }
+          lastStatus = 502
+          lastText = 'empty AI response'
+          continue
+        }
+
+        lastStatus = response.status
+        lastText = await response.text()
+
+        // 401/403 → clé API invalide : bascule sur la clé de secours s'il en reste.
+        if (response.status === 401 || response.status === 403) {
+          unauthorized = true
+          break
+        }
+        // Les autres erreurs (404 modèle retiré, 429 débit, 4xx/5xx provider) → on
+        // tente le modèle suivant de la whitelist.
       }
-
-      lastStatus = response.status
-      lastText = await response.text()
-
-      // 401/403 → clé API invalide : retenter un autre modèle ne changera rien.
-      if (response.status === 401 || response.status === 403) break
-      // Les autres erreurs (404 modèle retiré, 429 débit, 4xx/5xx provider) → on
-      // tente le modèle suivant de la whitelist.
+      if (!unauthorized) break
+      unauthorized = false
     }
 
     console.error('OpenRouter error:', lastStatus, lastModel, lastText)
