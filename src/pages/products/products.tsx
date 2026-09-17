@@ -159,7 +159,7 @@ export default function ProductsPage() {
     reader.readAsArrayBuffer(file)
   }
 
-  function handleConfirmImport() {
+  async function handleConfirmImport() {
     if (!orgId || importData.length === 0) return
     // S7 : normalisation des catégories (le CHECK de la table n'autorise que
     // snacks/boissons/complements/vetements/equipement — une valeur hors liste
@@ -187,9 +187,10 @@ export default function ProductsPage() {
     })
     const skipped = products.filter(p => !p.name).length
     products = products.filter(p => p.name)
-    supabase.from("products").insert(products).then(({ error }) => {
-      if (error) {
-        toast({ title: t("errors.error") || "Error", description: error.message, variant: "destructive" })
+    try {
+      const { error: insertError } = await supabase.from("products").insert(products)
+      if (insertError) {
+        toast({ title: t("errors.error") || "Error", description: insertError.message, variant: "destructive" })
         return
       }
       queryClient.invalidateQueries({ queryKey: ["products"] })
@@ -201,7 +202,9 @@ export default function ProductsPage() {
       setImportDialogOpen(false)
       setImportData([])
       if (importFileRef.current) importFileRef.current.value = ''
-    })
+    } catch (err) {
+      toast({ title: t("errors.error") || "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" })
+    }
   }
 
   const { data: items = [], isLoading } = useQuery({

@@ -604,16 +604,21 @@ export default function CoachModePage() {
                             <Button
                               size="sm"
                               className="h-6 text-[10px] flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                supabase.from('staff').update({ salary: Number(cardSalary) || 0, rate_per_member: Number(cardRate) || 0, bonus: Number(cardBonus) || 0 }).eq('id', c.id).then(({ error }) => {
-                                  if (!error) {
-                                    invalidateAllCoaches()
-                                    setEditingCardId(null)
-                                    toast({ title: 'Salaire mis à jour' })
-                                  }
-                                })
-                              }}
+onClick={async (e) => {
+                e.stopPropagation()
+                try {
+                  const { error: updateError } = await supabase.from('staff').update({ salary: Number(cardSalary) || 0, rate_per_member: Number(cardRate) || 0, bonus: Number(cardBonus) || 0 }).eq('id', c.id)
+                  if (updateError) {
+                    toast({ title: 'Erreur', description: updateError.message, variant: 'destructive' })
+                    return
+                  }
+                  invalidateAllCoaches()
+                  setEditingCardId(null)
+                  toast({ title: 'Salaire mis à jour' })
+                } catch (err) {
+                  toast({ title: 'Erreur', description: err instanceof Error ? err.message : String(err), variant: 'destructive' })
+                }
+              }}
                             >
                               OK
                             </Button>
