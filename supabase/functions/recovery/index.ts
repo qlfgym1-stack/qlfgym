@@ -185,10 +185,10 @@ serve(async (req) => {
 
       await supabase
         .from('recovery_codes')
-        .update({ last_used_at: new Date().toISOString(), code_hash: null })
+        .update({ last_used_at: new Date().toISOString() })
         .eq('user_id', userId)
 
-      return new Response(JSON.stringify({ valid: true }), {
+      return new Response(JSON.stringify({ valid: true, userId }), {
         headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
       })
     }

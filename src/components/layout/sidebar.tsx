@@ -37,6 +37,7 @@ import {
   SprayCan,
   UserSearch,
   Activity,
+  ShieldCheck,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -147,6 +148,7 @@ const navGroups: NavGroup[] = [
     groupKey: "admin",
     items: [
       { key: "settings", icon: Settings, path: "/settings" },
+      { key: "security", icon: ShieldCheck, path: "/settings/security" },
       { key: "diagnostics", icon: Activity, path: "/settings/diagnostics" },
       { key: "profile", icon: UserCog, path: "/profile" },
       { key: "users", icon: Users, path: "/admin/users" },
@@ -178,6 +180,7 @@ const RECEPTION_ITEMS = new Set(['pointage', 'members', 'pos'])
 const CLEANER_ITEMS = new Set(['pointage'])
 
 function getTopRole(roles: { role: string }[]): string {
+  if (roles.some(r => r.role === 'super_admin')) return 'admin'
   if (roles.some(r => r.role === 'admin')) return 'admin'
   if (roles.some(r => r.role === 'receptionist')) return 'reception'
   if (roles.some(r => r.role === 'cleaner')) return 'cleaner'

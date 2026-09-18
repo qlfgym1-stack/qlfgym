@@ -41,6 +41,7 @@ const Notifications = lazy(() => import('@/pages/notifications/notifications'))
 const Settings = lazy(() => import('@/pages/settings/settings'))
 const Profile = lazy(() => import('@/pages/settings/profile'))
 const Diagnostics = lazy(() => import('@/pages/settings/diagnostics'))
+const Security = lazy(() => import('@/pages/settings/security'))
 const AdminUsers = lazy(() => import('@/pages/admin/users'))
 const Audit = lazy(() => import('@/pages/admin/audit'))
 const Display = lazy(() => import('@/pages/display/display'))
@@ -95,7 +96,7 @@ const RECEPTION_ROUTES = new Set(['/pointage', '/members', '/pos', '/encaissemen
 const CLEANER_ROUTES = new Set(['/pointage'])
 
 function isRestricted(role: string, allowed: Set<string>, pathname: string, roles: { role: string }[]) {
-  if (roles.some(r => ['admin', 'staff', 'coach'].includes(r.role))) return false
+  if (roles.some(r => ['admin', 'staff', 'coach', 'super_admin'].includes(r.role))) return false
   return roles.some(r => r.role === role) && !allowed.has(pathname)
 }
 
@@ -110,7 +111,7 @@ function RoleGuard({ children }: { children: React.ReactNode }) {
 }
 
 function isRestrictedRole(roles: { role: string }[]) {
-  if (roles.some(r => ['admin', 'staff', 'coach'].includes(r.role))) return false
+  if (roles.some(r => ['admin', 'staff', 'coach', 'super_admin'].includes(r.role))) return false
   return roles.some(r => r.role === 'receptionist') || roles.some(r => r.role === 'cleaner')
 }
 
@@ -127,6 +128,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// Reçoit le retour OAuth (Google/Apple) : les tokens sont extraits par supabase-js
+// depuis le hash de l'URL via onAuthStateChange (INITIAL_SESSION).
+function OAuthCallback() {
+  const { isLoading } = useAuth()
+  const { roles } = useAuth()
+  if (isLoading) return <Loading />
+  return <Navigate to={isRestrictedRole(roles) ? '/pointage' : '/dashboard'} replace />
+}
+
 export default function App() {
   const location = useLocation()
 
@@ -140,6 +150,7 @@ export default function App() {
             <Route path="/auth" element={<PublicRoute><Suspense fallback={<Loading />}><SignIn /></Suspense></PublicRoute>} />
             <Route path="/auth/sign-up" element={<PublicRoute><Suspense fallback={<Loading />}><SignUp /></Suspense></PublicRoute>} />
             <Route path="/auth/recovery" element={<PublicRoute><Suspense fallback={<Loading />}><Recovery /></Suspense></PublicRoute>} />
+            <Route path="/auth/callback" element={<OAuthCallback />} />
             <Route path="/" element={<ProtectedRoute><RoleGuard><AppLayout /></RoleGuard></ProtectedRoute>}>
               <Route index element={<IndexRedirect />} />
               <Route path="dashboard" element={<PageTransition><Suspense fallback={<Loading />}><Dashboard /></Suspense></PageTransition>} />
@@ -174,6 +185,7 @@ export default function App() {
               <Route path="notifications" element={<PageTransition><Suspense fallback={<Loading />}><Notifications /></Suspense></PageTransition>} />
               <Route path="settings" element={<PageTransition><Suspense fallback={<Loading />}><Settings /></Suspense></PageTransition>} />
               <Route path="settings/diagnostics" element={<PageTransition><Suspense fallback={<Loading />}><Diagnostics /></Suspense></PageTransition>} />
+              <Route path="settings/security" element={<PageTransition><Suspense fallback={<Loading />}><Security /></Suspense></PageTransition>} />
               <Route path="profile" element={<PageTransition><Suspense fallback={<Loading />}><Profile /></Suspense></PageTransition>} />
               <Route path="admin/users" element={<PageTransition><Suspense fallback={<Loading />}><AdminUsers /></Suspense></PageTransition>} />
               <Route path="admin/audit" element={<PageTransition><Suspense fallback={<Loading />}><Audit /></Suspense></PageTransition>} />

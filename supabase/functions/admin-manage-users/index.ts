@@ -62,16 +62,19 @@ serve(async (req) => {
       .from('user_roles')
       .select('organization_id, role')
       .eq('user_id', user.id)
-      .eq('role', 'admin')
 
     const supabase = createClient(supabaseUrl, supabaseKey)
     const body = await req.json()
     const { action, ...params } = body
 
-    const targetOrg = params.organization_id || roles?.[0]?.organization_id
-    const isTargetAdmin = roles?.some((r: any) => r.organization_id === targetOrg)
+    // super_admin : accès global à toutes les orgs ; admin : accès à sa salle
+    const isSuperAdmin = roles?.some((r: any) => r.role === 'super_admin')
+    const targetOrg = isSuperAdmin && !params.organization_id
+      ? params.organization_id || undefined
+      : params.organization_id || roles?.find((r: any) => r.role !== 'super_admin')?.organization_id || roles?.[0]?.organization_id
+    const isTargetAdmin = isSuperAdmin || roles?.some((r: any) => r.organization_id === targetOrg && r.role === 'admin')
     if (!isTargetAdmin) {
-      return new Response(JSON.stringify({ error: 'Forbidden: admin role required for this organization' }), {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin or super_admin role required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
       })

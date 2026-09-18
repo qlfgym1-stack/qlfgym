@@ -16,11 +16,51 @@ interface AuthState {
   authError: string | null
 }
 
+export type TopRole = 'super_admin' | 'admin' | 'coach' | 'staff' | 'receptionist' | 'cleaner' | null
+
+const ROLE_RANK: Record<string, number> = {
+  super_admin: 6, admin: 5, coach: 4, staff: 3, receptionist: 2, cleaner: 1,
+}
+
+export function topRoleOf(roles: UserRole[]): TopRole {
+  if (!roles || roles.length === 0) return null
+  let best: TopRole = null
+  let bestRank = -1
+  for (const r of roles) {
+    const rank = ROLE_RANK[r.role] ?? 0
+    if (rank > bestRank) { bestRank = rank; best = r.role as TopRole }
+  }
+  return best
+}
+
+async function getPendingMfaFactorId(supabase: import('@supabase/supabase-js').SupabaseClient<import('@/types/supabase').Database>): Promise<string | null> {
+  try {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.currentLevel === 'aal2') return null
+    const { data: factorsData } = await supabase.auth.mfa.listFactors()
+    const totp = (factorsData?.all ?? []).find(f => f.status === 'verified' && f.factor_type === 'totp')
+    return totp?.id ?? null
+  } catch {
+    return null
+  }
+}
+
 interface AuthContextValue extends AuthState {
   signIn: (identifier: string, password: string, recoveryCode?: string) => Promise<{ error: Error | null; newCode?: string }>
   signUp: (email: string, password: string, orgData: { name: string; slug: string }) => Promise<{ error: Error | null; recoveryCode?: string }>
   signOut: () => Promise<void>
   retryAuth: () => Promise<void>
+  topRole: TopRole
+  isSuperAdmin: boolean
+  sendOtp: (email: string) => Promise<{ error: Error | null }>
+  verifyOtpCode: (email: string, token: string) => Promise<{ error: Error | null; requiresMfa?: boolean; factorId?: string }>
+  signInWithProvider: (provider: 'google' | 'apple') => Promise<{ error: Error | null }>
+  prepareMfa: () => Promise<{ error: Error | null; factorId?: string | null }>
+  verifyMfa: (factorId: string, code: string) => Promise<{ error: Error | null }>
+  enrollTOTP: () => Promise<{ error: Error | null; factorId?: string; qrCode?: string }>
+  verifyTOTPEnroll: (factorId: string, code: string) => Promise<{ error: Error | null }>
+  unenrollMFA: (factorId: string) => Promise<{ error: Error | null }>
+  listMfa: () => Promise<{ error: Error | null; factors?: Array<{ id: string; status: string; type: string; friendlyName?: string | null }> }>
 }
 
 const PROACTIVE_REFRESH_MS = 30 * 60 * 1000
@@ -258,7 +298,99 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return { error: phoneErr }
-  }, [])
+  }, [supabase])
+
+  const sendOtp = useCallback(async (email: string) => {
+    if (IS_MOCK) return { error: null }
+    if (!email.includes('@')) return { error: new Error('Adresse email invalide') }
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    })
+    if (error && String(error.message || '').toLowerCase().includes('otp_disabled')) {
+      return { error: new Error('La connexion par code email (OTP) n\'est pas activée sur ce projet. Vous pouvez utiliser votre email + mot de passe, ou bien activer "Email OTP" dans Supabase → Authentication.') }
+    }
+    return { error }
+  }, [supabase])
+
+  const verifyOtpCode = useCallback(async (email: string, token: string) => {
+    if (IS_MOCK) return { error: null }
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    if (error) return { error }
+    const factorId = await getPendingMfaFactorId(supabase)
+    return { error: null, requiresMfa: !!factorId, factorId: factorId ?? undefined }
+  }, [supabase])
+
+  const signInWithProvider = useCallback(async (provider: 'google' | 'apple') => {
+    if (IS_MOCK) return { error: null }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin + '/auth/callback' },
+    })
+    return { error }
+  }, [supabase])
+
+  const prepareMfa = useCallback(async () => {
+    if (IS_MOCK) return { error: null, factorId: null }
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalError) return { error: aalError }
+    if (aal.currentLevel === 'aal2') return { error: null, factorId: null }
+    const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
+    if (factorsError) return { error: factorsError }
+    const totp = (factorsData?.all ?? []).find(f => f.status === 'verified' && f.factor_type === 'totp')
+    return { error: null, factorId: totp?.id ?? null }
+  }, [supabase])
+
+  const verifyMfa = useCallback(async (factorId: string, code: string) => {
+    if (IS_MOCK) return { error: null }
+    try {
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId })
+      if (challengeError) return { error: challengeError }
+      const { error: verifyError } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code: code.replace(/\s/g, '') })
+      if (verifyError) return { error: verifyError }
+      fetchSession(0, true)
+      return { error: null }
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error(String(err)) }
+    }
+  }, [supabase, fetchSession])
+
+  const enrollTOTP = useCallback(async () => {
+    if (IS_MOCK) return { error: null }
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Authenticator' })
+    if (error) return { error }
+    return { error: null, factorId: data.id, qrCode: data.totp?.qr_code }
+  }, [supabase])
+
+  const verifyTOTPEnroll = useCallback(async (factorId: string, code: string) => {
+    if (IS_MOCK) return { error: null }
+    try {
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId })
+      if (challengeError) return { error: challengeError }
+      const { error: verifyError } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code: code.replace(/\s/g, '') })
+      if (verifyError) return { error: verifyError }
+      return { error: null }
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error(String(err)) }
+    }
+  }, [supabase])
+
+  const unenrollMFA = useCallback(async (factorId: string) => {
+    if (IS_MOCK) return { error: null }
+    const { error } = await supabase.auth.mfa.unenroll({ factorId })
+    return { error }
+  }, [supabase])
+
+  const listMfa = useCallback(async () => {
+    if (IS_MOCK) return { error: null, factors: [] }
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) return { error }
+    const factors = (data?.all ?? []).map(f => ({
+      id: f.id, status: f.status, type: f.factor_type,
+      friendlyName: f.friendly_name ?? null,
+    }))
+    return { error: null, factors }
+  }, [supabase])
 
   const signUp = useCallback(async (email: string, password: string, orgData: { name: string; slug: string }) => {
     if (IS_MOCK) {
@@ -286,7 +418,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { plainText, hash } = await generateRecoveryCode();
     await storeRecoveryCode(data.user.id, hash);
     return { error: null, recoveryCode: plainText }
-  }, [])
+  }, [supabase])
 
   const signOut = useCallback(async () => {
     try {
@@ -308,7 +440,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchSession, tryRefreshSession])
 
-  const ctxValue = useMemo(() => ({ ...state, signIn, signUp, signOut, retryAuth }), [state, signIn, signUp, signOut, retryAuth])
+  const topRole = topRoleOf(state.roles)
+  const isSuperAdmin = topRole === 'super_admin'
+
+  const ctxValue = useMemo(() => ({
+    ...state,
+    signIn, signUp, signOut, retryAuth,
+    topRole, isSuperAdmin,
+    sendOtp, verifyOtpCode, signInWithProvider,
+    prepareMfa, verifyMfa,
+    enrollTOTP, verifyTOTPEnroll, unenrollMFA, listMfa,
+  }), [state, signIn, signUp, signOut, retryAuth, topRole, isSuperAdmin,
+    sendOtp, verifyOtpCode, signInWithProvider, prepareMfa, verifyMfa,
+    enrollTOTP, verifyTOTPEnroll, unenrollMFA, listMfa])
+
   return <AuthContext.Provider value={ctxValue}>{children}</AuthContext.Provider>
 }
 
