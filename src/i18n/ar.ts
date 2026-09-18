@@ -105,6 +105,7 @@ const ar = {
     usernamePlaceholder: "اسم المستخدم",
     mfaStepHint: "رموز التحقق عبر تطبيق Authenticator",
     connectAuthenticator: "تسجيل الدخول عبر Authenticator",
+    continueWithGmail: "المتابعة مع Gmail",
     authenticatorInfo1: "أدخل بريدك الإلكتروني لاستلام رمز تسجيل الدخول.",
     authenticatorInfo2: "إذا كان التحقق بخطوتين مفعّلاً، سيُطلب منك رمز Authenticator بعد ذلك.",
     authenticatorDesc: "استخدم تطبيق مصادقة لتوليد رموز تسجيل الدخول.",

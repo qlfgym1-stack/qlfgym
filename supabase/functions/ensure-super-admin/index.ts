@@ -23,7 +23,12 @@ function getCorsHeaders(request: Request) {
 
 // Sécurité : l'email du SUPER_ADMIN n'est JAMAIS en dur dans le code frontend.
 // Il est configuré comme secret de l'Edge Function (SUPER_ADMIN_EMAIL) et seul
-// ce compte, une fois connecté, peut déclencher l'élevation de son propre rôle.
+// ce compte, une fois connecté, peut déclencher l'élevage de son propre rôle.
+//
+// Bootstrap initial (une seule fois) : si le compte super_admin n'existe pas
+// encore dans auth.users, l'appelant peut le créer via le secret jetable
+// SUPER_ADMIN_BOOTSTRAP_SECRET (header x-bootstrap-secret). Une fois le compte
+// créé, ce secret doit être retiré (supabase secrets unset).
 serve(async (req) => {
   try {
     if (req.method === 'OPTIONS') {
@@ -40,6 +45,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const superAdminEmail = (Deno.env.get('SUPER_ADMIN_EMAIL') || '').toLowerCase().trim()
+    const bootstrapSecret = Deno.env.get('SUPER_ADMIN_BOOTSTRAP_SECRET') || ''
     if (!supabaseUrl || !supabaseKey) {
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
@@ -53,8 +59,73 @@ serve(async (req) => {
       })
     }
 
-    // L'appelant doit être connecté ET son email doit correspondre au compte
-    // SUPER_ADMIN configuré. Personne d'autre ne peut déclencher l'assignation.
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const requestSecret = req.headers.get('x-bootstrap-secret') || ''
+
+    // Si un secret de bootstrap est fourni, tenter le bootstrap initial.
+    if (requestSecret) {
+      if (!bootstrapSecret || requestSecret !== bootstrapSecret) {
+        return new Response(JSON.stringify({ error: 'Invalid bootstrap secret' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        })
+      }
+
+      // Vérifie si le compte existe déjà (boucle paginée pour >100 users).
+      let existingUser = false
+      let pageNumber = 1
+      let hasMore = true
+      while (hasMore) {
+        const { data: page, error: pageError } = await supabase.auth.admin.listUsers({ page: pageNumber, perPage: 200 })
+        if (pageError) throw pageError
+        const users = page?.users ?? []
+        if (users.some((u: any) => ((u.email || '') as string).toLowerCase() === superAdminEmail)) {
+          existingUser = true
+          break
+        }
+        hasMore = users.length === 200
+        if (hasMore) pageNumber += 1
+      }
+
+      if (!existingUser) {
+        const body = await req.json().catch(() => ({}))
+        const { data: created, error: createError } = await supabase.auth.admin.createUser({
+          email: superAdminEmail,
+          password: body.password || undefined,
+          email_confirm: true,
+          user_metadata: { full_name: 'Super Admin' },
+        })
+        if (createError) {
+          return new Response(JSON.stringify({ error: createError.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+          })
+        }
+        if (!created?.user) {
+          return new Response(JSON.stringify({ error: 'User could not be created' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+          })
+        }
+      }
+
+      const { data, error } = await supabase.rpc('assign_super_admin_role_by_email', {
+        p_email: superAdminEmail,
+      })
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        })
+      }
+      return new Response(JSON.stringify({ success: !data?.error, result: data }), {
+        status: data?.error ? 409 : 200,
+        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+      })
+    }
+
+    // Chemin normal : l'appelant doit être connecté ET son email doit
+    // correspondre au compte SUPER_ADMIN configuré.
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing token' }), {
@@ -83,7 +154,6 @@ serve(async (req) => {
     }
 
     // Assignation via RPC sécurisé (service_role requis côté BDD).
-    const supabase = createClient(supabaseUrl, supabaseKey)
     const { data, error } = await supabase.rpc('assign_super_admin_role_by_email', {
       p_email: superAdminEmail,
     })

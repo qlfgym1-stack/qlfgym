@@ -159,6 +159,7 @@ const en = {
     usernamePlaceholder: "Username",
     mfaStepHint: "Verification codes via your Authenticator app",
     connectAuthenticator: "Sign in with Authenticator",
+    continueWithGmail: "Continue with Gmail",
     authenticatorInfo1: "Enter your email to receive your sign-in code.",
     authenticatorInfo2: "If two-factor authentication is enabled, an Authenticator code will be requested next.",
     authenticatorDesc: "Use an authenticator app to generate your sign-in codes.",
