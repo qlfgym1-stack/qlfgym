@@ -35,7 +35,7 @@ function GmailLogo({ className }: { className?: string }) {
 export default function SignIn() {
   const t = useT()
   const navigate = useNavigate()
-  const { signIn, sendOtp, verifyOtpCode, verifyMfa, prepareMfa } = useAuth()
+  const { signIn, sendOtp, verifyOtpCode, verifyMfa, prepareMfa, signInWithProvider } = useAuth()
   const { toast } = useToast()
 
   const [tab, setTab] = useState<Tab>('admin')
@@ -46,6 +46,7 @@ export default function SignIn() {
   const [otpSent, setOtpSent] = useState(false)
   const [isOtpLoading, setIsOtpLoading] = useState(false)
   const [startGmail, setStartGmail] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   const [mfaFactorId, setMfaFactorId] = useState('')
   const [mfaCode, setMfaCode] = useState('')
@@ -90,6 +91,15 @@ export default function SignIn() {
     }
     setOtpSent(true)
     toast({ title: t('auth.otpSent').replace('{email}', otpEmail) })
+  }
+
+  async function handleGoogle() {
+    setGoogleLoading(true)
+    const { error } = await signInWithProvider('google')
+    setGoogleLoading(false)
+    if (error) {
+      toast({ variant: 'destructive', title: t('auth.error'), description: error.message })
+    }
   }
 
   async function handleOtpVerify() {
@@ -294,16 +304,18 @@ export default function SignIn() {
                     <div className="space-y-3">
                       {!otpSent ? (
                         <>
-                          {!startGmail ? (
-                            <Button
-                              type="button"
-                              className="w-full h-11 bg-white hover:bg-white/90 text-neutral-800 font-medium gap-2.5 shadow"
-                              onClick={() => setStartGmail(true)}
-                            >
-                              <GmailLogo />
-                              {t('auth.continueWithGmail')}
-                            </Button>
-                          ) : (
+                          {/* Vrai OAuth Google */}
+                          <Button
+                            type="button"
+                            className="w-full h-11 bg-white hover:bg-white/90 text-neutral-800 font-medium gap-2.5 shadow"
+                            disabled={googleLoading}
+                            onClick={handleGoogle}
+                          >
+                            {googleLoading ? <Loader2 className="h-5 w-5 animate-spin text-neutral-500" /> : <GmailLogo />}
+                            {t('auth.continueWithGmail')}
+                          </Button>
+
+                          {startGmail ? (
                             <>
                               <p className="text-xs text-white/50">{t('auth.otpDescription')}</p>
                               <Input
@@ -325,6 +337,22 @@ export default function SignIn() {
                               <button type="button" onClick={() => { setStartGmail(false); setOtpEmail('') }} className="w-full text-center text-xs text-white/40 hover:text-white/70">
                                 ← {t('auth.backToOther')}
                               </button>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-3 py-1">
+                                <div className="h-px flex-1 bg-white/10" />
+                                <span className="text-xs text-white/40 uppercase tracking-wider">{t('auth.or')}</span>
+                                <div className="h-px flex-1 bg-white/10" />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="w-full h-10 text-white/60 hover:text-white"
+                                onClick={() => setStartGmail(true)}
+                              >
+                                {t('auth.receiveEmailCode')}
+                              </Button>
                             </>
                           )}
                         </>

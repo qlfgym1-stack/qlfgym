@@ -1,11 +1,14 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useT } from '@/i18n'
 import { AppLayout } from '@/components/layout'
 import { AuthProvider } from '@/stores/auth'
 import { useAuth } from '@/stores/auth'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Loader2, ShieldCheck } from 'lucide-react'
 
 const SignIn = lazy(() => import('@/pages/auth/sign-in'))
 const SignUp = lazy(() => import('@/pages/auth/sign-up'))
@@ -128,12 +131,75 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-// Reçoit le retour OAuth (Google/Apple) : les tokens sont extraits par supabase-js
+// Reçoit le retour OAuth (Google) : les tokens sont extraits par supabase-js
 // depuis le hash de l'URL via onAuthStateChange (INITIAL_SESSION).
+// Si un TOTP vérifié est actif (aal1), on demande le code Authenticator avant de continuer.
 function OAuthCallback() {
-  const { isLoading } = useAuth()
-  const { roles } = useAuth()
+  const { isLoading, roles, prepareMfa, verifyMfa } = useAuth()
+  const t = useT()
+  const [factorId, setFactorId] = useState<string | null>(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (isLoading) return
+      const { factorId: fid, error: e } = await prepareMfa()
+      if (cancelled) return
+      if (e) { setError(e.message); return }
+      if (fid) setFactorId(fid)
+    })()
+    return () => { cancelled = true }
+  }, [isLoading, prepareMfa])
+
   if (isLoading) return <Loading />
+  if (factorId) {
+    async function submit() {
+      if (mfaCode.length < 6) return
+      setBusy(true)
+      const { error: e } = await verifyMfa(factorId!, mfaCode)
+      setBusy(false)
+      if (e) { setError(e.message); return }
+      window.location.assign('/dashboard')
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-sm space-y-4">
+          <div className="text-center">
+            <ShieldCheck className="mx-auto h-10 w-10 text-primary" />
+            <h1 className="mt-2 text-lg font-semibold">{t('auth.mfaTitle')}</h1>
+            <p className="text-sm text-muted-foreground">{t('auth.mfaDescription')}</p>
+          </div>
+          <Input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder={t('auth.mfaCodePlaceholder')}
+            value={mfaCode}
+            onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+            onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
+            className="h-12 text-center font-mono text-lg tracking-widest"
+            autoFocus
+          />
+          <Button className="w-full h-11" onClick={submit} disabled={busy || mfaCode.length < 6}>
+            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t('auth.mfaVerify')}
+          </Button>
+          {error && <p className="text-sm text-destructive text-center">{error}</p>}
+        </div>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <Button variant="outline" onClick={() => { window.location.assign('/auth') }}>{t('auth.backToOther')}</Button>
+      </div>
+    )
+  }
   return <Navigate to={isRestrictedRole(roles) ? '/pointage' : '/dashboard'} replace />
 }
 

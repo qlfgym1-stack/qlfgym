@@ -167,6 +167,7 @@ const fr = {
     mfaStepHint: "Codes de vérification via votre application Authenticator",
     connectAuthenticator: "Connexion avec Authenticator",
     continueWithGmail: "Continuer avec Gmail",
+    receiveEmailCode: "Recevoir un code par email",
     authenticatorInfo1: "Saisissez votre email pour recevoir votre code de connexion.",
     authenticatorInfo2: "Si la double authentification est activée, un code Authenticator vous sera ensuite demandé.",
     authenticatorDesc: "Utilisez une application d'authentification pour générer vos codes de connexion.",
