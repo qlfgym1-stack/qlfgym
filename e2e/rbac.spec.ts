@@ -21,7 +21,7 @@ async function login(page: Page) {
   await page.waitForLoadState('networkidle').catch(() => {});
 }
 
-test.group('Role-Based Access Control', () => {
+test.describe('Role-Based Access Control', () => {
   test('admin can access all routes', async ({ page }) => {
     await login(page);
     const routes = ['/dashboard', '/members', '/pos', '/pointage', '/settings', '/ai-assistant'];
@@ -33,7 +33,7 @@ test.group('Role-Based Access Control', () => {
   });
 });
 
-test.group('Cross-Tenant Isolation', () => {
+test.describe('Cross-Tenant Isolation', () => {
   test('members page shows org data only', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/members`);
@@ -44,7 +44,7 @@ test.group('Cross-Tenant Isolation', () => {
   });
 });
 
-test.group('AI Assistant', () => {
+test.describe('AI Assistant', () => {
   test('AI assistant page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/ai-assistant`);
@@ -53,7 +53,7 @@ test.group('AI Assistant', () => {
   });
 });
 
-test.group('Robustness', () => {
+test.describe('Robustness', () => {
   test('double-click does not cause duplicate actions', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/pos`);
@@ -66,7 +66,7 @@ test.group('Robustness', () => {
   });
 });
 
-test.group('404 Page', () => {
+test.describe('404 Page', () => {
   test('shows 404 for unknown routes', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/nonexistent-route-xyz-12345`);

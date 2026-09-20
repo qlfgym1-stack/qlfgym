@@ -21,7 +21,7 @@ async function login(page: Page, identifier: string = 'moussamohamedelmabrouk@gm
   await page.waitForLoadState('networkidle').catch(() => {});
 }
 
-test.group('POS / Checkout', () => {
+test.describe('POS / Checkout', () => {
   test('POS page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/pos`);
@@ -37,7 +37,7 @@ test.group('POS / Checkout', () => {
   });
 });
 
-test.group('Corporate Discount', () => {
+test.describe('Corporate Discount', () => {
   test('corporate page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/corporate`);
@@ -46,7 +46,7 @@ test.group('Corporate Discount', () => {
   });
 });
 
-test.group('Payments', () => {
+test.describe('Payments', () => {
   test('payments page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/payments`);
@@ -55,7 +55,7 @@ test.group('Payments', () => {
   });
 });
 
-test.group('Attendance', () => {
+test.describe('Attendance', () => {
   test('attendance page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/pointage`);
@@ -64,7 +64,7 @@ test.group('Attendance', () => {
   });
 });
 
-test.group('Financial', () => {
+test.describe('Financial', () => {
   test('accounting page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/assistant-comptable`);
@@ -94,7 +94,7 @@ test.group('Financial', () => {
   });
 });
 
-test.group('Settings', () => {
+test.describe('Settings', () => {
   test('settings page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/settings`);

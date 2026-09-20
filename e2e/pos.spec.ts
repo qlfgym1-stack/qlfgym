@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.group('POS / Checkout', () => {
+test.describe('POS / Checkout', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/auth');
     await page.fill('input[type="email"]', 'moussamohamedelmabrouk@gmail.com');
@@ -42,7 +42,7 @@ test.group('POS / Checkout', () => {
   });
 });
 
-test.group('Customer Journey', () => {
+test.describe('Customer Journey', () => {
   test('create member flow', async ({ page }) => {
     await page.goto('/auth');
     await page.fill('input[type="email"]', 'moussamohamedelmabrouk@gmail.com');
@@ -79,7 +79,7 @@ test.group('Customer Journey', () => {
   });
 });
 
-test.group('Attendance', () => {
+test.describe('Attendance', () => {
   test('attendance page accessible', async ({ page }) => {
     await page.goto('/auth');
     await page.fill('input[type="email"]', 'moussamohamedelmabrouk@gmail.com');
