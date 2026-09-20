@@ -878,6 +878,7 @@ export default function POSPage() {
           p_total_amount: subscriptionPaid,
           p_payment_method: paymentMethod,
           p_payment_amount: subscriptionPaid,
+          p_discount: corporateDiscount,
         })
         if (renewError) throw renewError
       }
@@ -895,6 +896,7 @@ export default function POSPage() {
           p_member_id: memberId,
           p_payment_method: paymentMethod,
           p_amount: subscriptionPaid,
+          p_discount: corporateDiscount,
         })
         if (finalizeError) throw finalizeError
       }
