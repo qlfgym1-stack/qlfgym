@@ -16,3 +16,7 @@ coverage/
 .vercel
 data/
 .env*
+e2e/storageState.json
+e2e/login.js
+e2e/login.cjs
+test-results/
