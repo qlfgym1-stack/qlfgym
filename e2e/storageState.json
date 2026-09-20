@@ -1,0 +1,18 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5173",
+      "localStorage": [
+        {
+          "name": "FITMANAGER_OFFLINE_QUEUE",
+          "value": "[]"
+        },
+        {
+          "name": "fitmanager-version-check",
+          "value": "{\"onlineVersion\":{\"version\":\"2.1.9\",\"build\":230,\"buildId\":\"2.1.9-230\",\"minSupportedVersion\":\"2.0.0\",\"updateRequired\":false},\"timestamp\":1789926639753}"
+        }
+      ]
+    }
+  ]
+}
