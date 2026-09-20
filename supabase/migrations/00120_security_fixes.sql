@@ -1,6 +1,16 @@
--- Migration 00120: Fix search_path for SECURITY DEFINER functions
--- All functions missing SET search_path = public have been recreated with it.
--- Old versions with different signatures remain but are not called by the app.
+-- Migration 00120: Fix search_path for SECURITY DEFINER functions + fix super_admin role
+-- =============================================================================
+-- 1. Fix: super_admin users must be updated to admin role
+--    (migration 00059 merged super_admin into admin but existing user_roles
+--     data still had 'super_admin' which is rejected by is_encaissement_operator
+--     which checks role IN ('admin', 'receptionist'))
+-- 2. Fix: All SECURITY DEFINER functions missing SET search_path = public
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 1. FIX: super_admin → admin (is_encaissement_operator checks admin/receptionist)
+-- ---------------------------------------------------------------------------
+UPDATE public.user_roles SET role = 'admin' WHERE role = 'super_admin';
 
 -- auto_assign_owner_role (already exists with SET search_path = public)
 -- is_org_member (already exists with SET search_path = public)
@@ -244,3 +254,20 @@ GRANT EXECUTE ON FUNCTION public.rfid_check_in(uuid, uuid, uuid) TO authenticate
 GRANT EXECUTE ON FUNCTION public.rfid_check_out(uuid, uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.manual_check_in(uuid, uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_staff_roster(uuid) TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Helper: is_encaissement_operator — used by record_pos_checkout
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_encaissement_operator(p_org_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles ur
+    WHERE ur.user_id = auth.uid()
+      AND ur.organization_id = p_org_id
+      AND ur.role IN ('admin', 'receptionist')
+  )
+$$;
