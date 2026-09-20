@@ -38,9 +38,9 @@ beforeEach(() => {
 })
 
 describe('generateDiagId', () => {
-  it('returns DIAG-YYYYMMDD-HHMMSS-XXXX format', () => {
+  it('returns DIAG-YYYYMMDD-HHMMSSmmm-XXXX format', () => {
     const id = generateDiagId()
-    expect(id).toMatch(/^DIAG-\d{8}-\d{6}-[0-9A-F]{4}$/)
+    expect(id).toMatch(/^DIAG-\d{8}-\d{9}-[0-9A-F]{4}$/)
   })
 
   it('generates unique IDs', () => {
