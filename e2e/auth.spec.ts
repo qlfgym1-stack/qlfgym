@@ -25,7 +25,7 @@ async function login(page: Page, identifier: string, password: string) {
   await page.waitForLoadState('networkidle').catch(() => {});
 }
 
-test.describe('Authentication', () => {
+test.group('Authentication', () => {
   test('sign-in page loads', async ({ page }) => {
     await goToAuth(page);
     await expect(page.locator('input[name="identifier"]')).toBeVisible({ timeout: 20000 });
@@ -66,7 +66,7 @@ test.describe('Authentication', () => {
   });
 });
 
-test.describe('Navigation', () => {
+test.group('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, 'moussamohamedelmabrouk@gmail.com', 'test123');
   });
@@ -96,7 +96,7 @@ test.describe('Navigation', () => {
   });
 });
 
-test.describe('POS', () => {
+test.group('POS', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
@@ -114,14 +114,14 @@ test.describe('POS', () => {
   });
 });
 
-test.describe('Dashboard', () => {
+test.group('Dashboard', () => {
   test('KPI cards visible after login', async ({ page }) => {
     await login(page);
     await expect(page.locator('[class*="card"], [class*="kpi"]').first()).toBeVisible({ timeout: 30000 });
   });
 });
 
-test.describe('Members', () => {
+test.group('Members', () => {
   test('members page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/members`);
@@ -130,7 +130,7 @@ test.describe('Members', () => {
   });
 });
 
-test.describe('Corporate', () => {
+test.group('Corporate', () => {
   test('corporate page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/corporate`);
@@ -139,7 +139,7 @@ test.describe('Corporate', () => {
   });
 });
 
-test.describe('AI Assistant', () => {
+test.group('AI Assistant', () => {
   test('AI assistant page loads', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/ai-assistant`);
@@ -148,7 +148,7 @@ test.describe('AI Assistant', () => {
   });
 });
 
-test.describe('404 Page', () => {
+test.group('404 Page', () => {
   test('shows 404 for unknown routes', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE_URL}/nonexistent-route-xyz-12345`);
@@ -156,7 +156,7 @@ test.describe('404 Page', () => {
   });
 });
 
-test.describe('Recovery', () => {
+test.group('Recovery', () => {
   test('recovery page loads', async ({ page }) => {
     await page.context().clearCookies();
     await page.goto(`${BASE_URL}/recovery`);
