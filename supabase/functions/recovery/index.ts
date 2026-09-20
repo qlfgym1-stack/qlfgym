@@ -13,6 +13,7 @@ const allowedOrigins = [
   'https://qlfgym.vercel.app',
   'https://fitmanager-pro-dz-eight.vercel.app',
   'https://fitmanager-pro-dz.vercel.app',
+  'https://fitmanager-pro-gwd4r76cw-qlfgym20-engs-projects.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
 ]
