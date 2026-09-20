@@ -93,26 +93,8 @@ export default function AdminUsersPage() {
     },
   })
 
-  const users = data?.users ?? []
+const users = data?.users ?? []
   const total = data?.total ?? 0
-
-  if (isError) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title={t('admin.users.title')} />
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-destructive font-medium">{t('admin.users.error')}</p>
-            <p className="text-sm text-muted-foreground mt-2">{error?.message}</p>
-            <Button variant="outline" className="mt-4" onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-users'] })}>
-              {t('common.retry')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-  const totalPages = Math.ceil(total / perPage)
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -165,22 +147,6 @@ export default function AdminUsersPage() {
     },
   })
 
-  const toggleStatus = async (target: AdminUser) => {
-    setStatusPending(true)
-    try {
-      const result = await callApi('set-active', { user_id: target.id, active: !target.isActive })
-      if (result.error) throw new Error(String(result.error))
-      toast({ title: target.isActive ? t('admin.users.deactivated') : t('admin.users.activated') })
-      setStatusOpen(false)
-      setStatusTarget(null)
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-    } catch (err) {
-      toast({ title: t('admin.users.error'), description: (err as Error).message, variant: 'destructive' })
-    } finally {
-      setStatusPending(false)
-    }
-  }
-
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!deleteTarget) throw new Error('No target')
@@ -196,6 +162,40 @@ export default function AdminUsersPage() {
       toast({ title: t('admin.users.error'), description: err.message, variant: 'destructive' })
     },
   })
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t('admin.users.title')} />
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-destructive font-medium">{t('admin.users.error')}</p>
+            <p className="text-sm text-muted-foreground mt-2">{error?.message}</p>
+            <Button variant="outline" className="mt-4" onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-users'] })}>
+              {t('common.retry')}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+  const totalPages = Math.ceil(total / perPage)
+
+  const toggleStatus = async (target: AdminUser) => {
+    setStatusPending(true)
+    try {
+      const result = await callApi('set-active', { user_id: target.id, active: !target.isActive })
+      if (result.error) throw new Error(String(result.error))
+      toast({ title: target.isActive ? t('admin.users.deactivated') : t('admin.users.activated') })
+      setStatusOpen(false)
+      setStatusTarget(null)
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    } catch (err) {
+      toast({ title: t('admin.users.error'), description: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setStatusPending(false)
+    }
+  }
 
   return (
     <div className="space-y-6">

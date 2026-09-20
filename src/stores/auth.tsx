@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const orgId = userRoles[0]?.organization_id
       if (!orgId) {
         if (fetchSeqRef.current !== seq) return
-        setState({ user, profile, organization: null, roles: userRoles, isLoading: false, isAuthenticated: false, authError: 'Aucune organisation associée à votre compte.' })
+        setState({ user, profile, organization: null, roles: userRoles, isLoading: false, isAuthenticated: false, authError: null })
         return
       }
       const { data: orgData, error: orgError } = await supabase.from('organizations').select('*').eq('id', orgId).single()
