@@ -5,6 +5,7 @@ import { useAuth } from "@/stores/auth"
 import { useT } from "@/i18n"
 import { useNavigate, useLocation } from "react-router-dom"
 import { format, startOfWeek, addDays, parseISO, getDay } from "date-fns"
+import { fr } from "date-fns/locale"
 import { PageHeader } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -231,7 +232,7 @@ export default function PlanningPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="font-medium">
-            {format(currentWeekStart, "MMM d")} - {format(addDays(currentWeekStart, 6), "MMM d, yyyy")}
+            {format(currentWeekStart, "dd/MM/yyyy", { locale: fr })} - {format(addDays(currentWeekStart, 6), "dd/MM/yyyy", { locale: fr })}
           </span>
           <Button variant="outline" size="icon" onClick={() => setWeekOffset(wo => wo + 1)}>
             <ChevronRight className="h-4 w-4" />

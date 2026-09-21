@@ -9,7 +9,7 @@ function safeNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+const MONTH_NAMES = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"]
 
 const INVESTMENT_CATEGORIES: Record<string, string> = {
   produits: "Produits",

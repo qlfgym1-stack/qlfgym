@@ -5,6 +5,8 @@ import { useAuth } from "@/stores/auth"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 import { PageHeader } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -686,7 +688,7 @@ export default function InventoryPage() {
                         {historyMovements.map((m) => (
                           <TableRow key={m.id}>
                             <TableCell className="whitespace-nowrap text-sm">
-                              {m.movement_date ? new Date(m.movement_date).toLocaleDateString("fr-DZ") : "—"}
+                              {m.movement_date ? format(new Date(m.movement_date), "dd/MM/yyyy", { locale: fr }) : "—"}
                             </TableCell>
                             <TableCell>
                               <Badge variant={m.type === "in" ? "default" : "destructive"} className="gap-1">

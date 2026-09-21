@@ -38,6 +38,7 @@ import {
   Plus, CalendarDays, List, Users, Clock, Loader2, Trash2, UserPlus, UserMinus, Pencil, Download, ChevronLeft, ChevronRight,
 } from "lucide-react"
 import { format, startOfWeek, addDays, parseISO, getDay } from "date-fns"
+import { fr } from "date-fns/locale"
 import { cn, toUpper } from "@/lib/utils"
 import { usePagination } from "@/hooks/usePagination"
 import { useExportCsv } from "@/hooks/useExportCsv"
@@ -751,7 +752,7 @@ export default function ClassesPage() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="font-medium">
-                {format(currentWeekStart, "MMM d")} - {format(addDays(currentWeekStart, 6), "MMM d, yyyy")}
+                {format(currentWeekStart, "dd/MM/yyyy", { locale: fr })} - {format(addDays(currentWeekStart, 6), "dd/MM/yyyy", { locale: fr })}
               </span>
               <Button variant="outline" size="icon" onClick={() => setWeekOffset(wo => wo + 1)}>
                 <ChevronRight className="h-4 w-4" />

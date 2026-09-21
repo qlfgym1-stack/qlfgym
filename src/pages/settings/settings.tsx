@@ -2,6 +2,8 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 import { PageHeader } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -298,7 +300,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4 shrink-0" />
-                <span>{t("settings.buildDate")}: {new Date(localVersion.buildDate).toLocaleDateString()}</span>
+                <span>{t("settings.buildDate")}: {format(new Date(localVersion.buildDate), "dd/MM/yyyy", { locale: fr })}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Github className="h-4 w-4 shrink-0" />

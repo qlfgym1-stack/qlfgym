@@ -13,6 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
 import { useT } from '@/i18n'
 import { getInitials, toUpper, formatPhone } from '@/lib/utils'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { Search, Users, UserCheck, Loader2, X, Plus, UserPlus, DollarSign, ChevronLeft, ChevronRight, History, Pencil, CalendarDays, Trash2 } from 'lucide-react'
 
 interface Coach {
@@ -70,7 +72,7 @@ function formatMonth(date: Date): string {
 }
 
 function formatDate(date: string): string {
-  return new Date(date + 'T00:00:00').toLocaleDateString('fr-DZ', { day: 'numeric', month: 'short', year: 'numeric' })
+  return format(new Date(date + 'T00:00:00'), 'dd/MM/yyyy', { locale: fr })
 }
 
 function formatCurrency(amount: number): string {

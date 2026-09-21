@@ -24,6 +24,8 @@ import {
 import { useNavigate } from "react-router-dom"
 import { PageHeader } from "@/components/layout"
 import { getInitials, toUpper, formatCurrency, formatPhone, displayPhone } from "@/lib/utils"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 import { buildDayStats } from "./lib/dayActivity"
 import { MemberDayDetail } from "./components/member-day-detail"
 
@@ -135,7 +137,7 @@ export default function PointagePage() {
   const nextDayStr = useMemo(() => addDays(selectedDate, 1), [selectedDate])
   const yesterdayStr = useMemo(() => addDays(todayStr, -1), [todayStr])
   const selectedDateLabel = useMemo(() => {
-    return new Date(selectedDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+    return format(new Date(selectedDate + "T12:00:00"), "EEEE dd MMMM", { locale: fr })
   }, [selectedDate])
 
   const [now, setNow] = useState(new Date())
@@ -1091,11 +1093,11 @@ export default function PointagePage() {
                             {(log.member.start_date || log.member.end_date) && (
                               <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                                 {log.member.start_date && (
-                                  <span>Début : {new Date(log.member.start_date).toLocaleDateString("fr-FR")}</span>
+                                   <span>Début : {format(new Date(log.member.start_date), "dd/MM/yyyy", { locale: fr })}</span>
                                 )}
                                 {log.member.end_date && (
                                   <span className={isExpired ? "text-destructive font-bold" : isWarning ? "text-orange-500 font-medium" : ""}>
-                                    Fin : {new Date(log.member.end_date).toLocaleDateString("fr-FR")}
+                                     Fin : {format(new Date(log.member.end_date), "dd/MM/yyyy", { locale: fr })}
                                     {!isExpired && log.member.days_remaining != null && ` (${log.member.days_remaining}j)`}
                                   </span>
                                 )}

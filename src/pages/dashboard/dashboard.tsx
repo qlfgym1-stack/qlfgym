@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/toast'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import {
   Users, UserCheck, DollarSign, CalendarDays, TrendingUp, Percent,
   Database, FileText, UserCog, Heart, BarChart3,
@@ -138,7 +140,7 @@ const REALTIME_DEBOUNCE_FAST = 1000
       if (bestDayData) {
         bestDayRevenue = bestDayData.amount
         const d = new Date(bestDayData.payment_date)
-        bestDayName = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+        bestDayName = format(d, 'EEEE dd MMMM', { locale: fr })
       }
 
       // Calculate profit: (POS revenue + subscription payments) - (COGS + expenses)

@@ -4,6 +4,8 @@ import { useAuth } from "@/stores/auth"
 import { useSupabase } from "@/hooks/useSupabase"
 import { useT } from "@/i18n"
 import { PageHeader } from "@/components/layout"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -294,10 +296,10 @@ const users = data?.users ?? []
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(u.createdAt).toLocaleDateString()}
+                        {format(new Date(u.createdAt), "dd/MM/yyyy", { locale: fr })}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString() : '-'}
+                        {u.lastSignIn ? format(new Date(u.lastSignIn), "dd/MM/yyyy", { locale: fr }) : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">

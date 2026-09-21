@@ -86,7 +86,7 @@ function daysUntil(endDate: string): number {
 
 function formatWaDate(dateStr: string): string {
   if (!dateStr) return ""
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(dateStr))
+  return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(dateStr))
 }
 
 function templateLabel(t: (key: string) => string, key: WaTemplateKey): string {

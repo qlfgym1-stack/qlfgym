@@ -6,6 +6,8 @@ import { useT } from "@/i18n"
 import { usePagination } from "@/hooks/usePagination"
 import { useExportCsv } from "@/hooks/useExportCsv"
 import { formatCurrency, toUpper } from "@/lib/utils"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 import { PageHeader } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -251,7 +253,7 @@ export default function Encaissement() {
 
   const handleExport = useCallback(() => {
     const exportData = filtered.map((r: EncaissementRow) => ({
-      date: new Date(r.date).toLocaleDateString("fr-FR"),
+      date: format(new Date(r.date), "dd/MM/yyyy", { locale: fr }),
       type: r.detailType === "subscription" ? (t("encaissement.subscription") || "Abonnement") : r.detailType === "renewal" ? (t("encaissement.renewal") || "Renouvellement") : r.detailType === "dropin" ? (t("encaissement.dropin") || "Séance libre") : (t("encaissement.product") || "Produit"),
       detail: r.description,
       member: r.memberName,
@@ -529,7 +531,7 @@ export default function Encaissement() {
                     {paginatedData.map(row => (
                       <tr key={`${row.type}-${row.id}`} className="border-b last:border-0 hover:bg-accent/30">
                         <td className="p-3 whitespace-nowrap">
-                          {new Date(row.date).toLocaleDateString("fr-FR")}
+                          {format(new Date(row.date), "dd/MM/yyyy", { locale: fr })}
                         </td>
                         <td className="p-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
@@ -707,7 +709,7 @@ export default function Encaissement() {
                     <Badge variant={c.action === "cancel" ? "destructive" : "default"}>
                       {c.action === "cancel" ? (t("encaissement.cancel") || "Annulation") : (t("encaissement.change") || "Modification")}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleString("fr-FR")}</span>
+                    <span className="text-xs text-muted-foreground">{format(new Date(c.created_at), "dd/MM/yyyy HH:mm", { locale: fr })}</span>
                   </div>
                   {renderOldNew(c)}
                   {c.reason && (

@@ -343,7 +343,7 @@ export function useAssistantData(
     for (let k = 11; k >= 0; k--) {
       const d = new Date(new Date(to + "T00:00:00").getFullYear(), new Date(to + "T00:00:00").getMonth() - k, 1)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-      monthLabels.push(`${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()]} ${d.getFullYear()}`)
+      monthLabels.push(`${["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"][d.getMonth()]} ${d.getFullYear()}`)
       const rev =
         payments.filter((p: PaymentRow) => monthKey(p.payment_date) === key).reduce((s: number, p: PaymentRow) => s + p.amount, 0) +
         posTransactions.filter((tx: PosTransactionRow) => monthKey(tx.created_at) === key).reduce((s: number, tx: PosTransactionRow) => s + bucketPosRevenue(tx), 0)

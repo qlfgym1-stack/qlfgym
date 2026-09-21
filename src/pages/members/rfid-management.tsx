@@ -4,6 +4,8 @@ import { useSupabase } from '@/hooks/useSupabase'
 import { useAuth } from '@/stores/auth'
 import { useT } from '@/i18n'
 import { useToast } from '@/components/ui/toast'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -161,7 +163,7 @@ export function RfidManagementDialog({ memberId, memberName, open, onOpenChange 
                         <Badge variant="outline" className="font-mono text-xs">{activeCard.rfid_uid}</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Attribué le {new Date(activeCard.assigned_at).toLocaleDateString('fr-FR')}
+                        Attribué le {format(new Date(activeCard.assigned_at), "dd/MM/yyyy", { locale: fr })}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -204,7 +206,7 @@ export function RfidManagementDialog({ memberId, memberName, open, onOpenChange 
                         <TableRow key={card.id}>
                           <TableCell className="font-mono text-xs">{card.rfid_uid}</TableCell>
                           <TableCell>{getStatusBadge(card.status)}</TableCell>
-                          <TableCell className="text-xs">{new Date(card.assigned_at).toLocaleDateString('fr-FR')}</TableCell>
+                          <TableCell className="text-xs">{format(new Date(card.assigned_at), "dd/MM/yyyy", { locale: fr })}</TableCell>
                           <TableCell className="text-xs">{card.reason || '-'}</TableCell>
                           <TableCell>
                             {card.status === 'DÉSACTIVÉ' && (
@@ -244,7 +246,7 @@ export function RfidManagementDialog({ memberId, memberName, open, onOpenChange 
                     <TableBody>
                       {auditLog.map((log: RfidCardAudit) => (
                         <TableRow key={log.id}>
-                          <TableCell className="text-xs">{new Date(log.created_at).toLocaleDateString('fr-FR')}</TableCell>
+                          <TableCell className="text-xs">{format(new Date(log.created_at), "dd/MM/yyyy", { locale: fr })}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{log.action}</Badge></TableCell>
                           <TableCell className="font-mono text-xs">{log.old_rfid_uid || '-'}</TableCell>
                           <TableCell className="font-mono text-xs">{log.new_rfid_uid}</TableCell>

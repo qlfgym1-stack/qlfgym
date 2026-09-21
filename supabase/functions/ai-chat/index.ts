@@ -135,7 +135,7 @@ serve(async (req) => {
 
     // Candidats à essayer : modèle sélectionné en premier, puis les 2 premiers
     // modèles de secours uniquement (on borne la latence : réponse visée 5-6 s).
-    const candidates = [selectedModel, ...FREE_MODELS.filter((m) => m !== selectedModel)].slice(0, 3)
+    const candidates = [selectedModel, ...FREE_MODELS.filter((m) => m !== selectedModel)].slice(0, 2)
 
     const systemContent = context
       ? `Tu es l'assistant IA de gestion d'une salle de sport (QLF GYM). Utilise le contexte de données fourni pour répondre en français, de façon concise et actionnable.\n\nContexte de données:\n${context}`
@@ -162,20 +162,19 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${key}`,
-              'HTTP-Referer': 'https://fitmanager-pro-dz-eight.vercel.app',
+              'HTTP-Referer': 'https://qlf-gym.vercel.app',
               'X-Title': 'QLF GYM',
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               model: candidate,
               messages: fullMessages,
-              max_tokens: 200,
+              max_tokens: 150,
               temperature: 0.3,
             }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(10000),
           })
         } catch (fetchErr) {
-          // Timeout / réseau : on tente le modèle suivant.
           lastStatus = 0
           lastText = `network error: ${(fetchErr as Error).message}`
           continue
@@ -195,13 +194,10 @@ serve(async (req) => {
         lastStatus = response.status
         lastText = await response.text()
 
-        // 401/403 → clé API invalide : bascule sur la clé de secours s'il en reste.
         if (response.status === 401 || response.status === 403) {
           unauthorized = true
           break
         }
-        // Les autres erreurs (404 modèle retiré, 429 débit, 4xx/5xx provider) → on
-        // tente le modèle suivant de la whitelist.
       }
       if (!unauthorized) break
       unauthorized = false
