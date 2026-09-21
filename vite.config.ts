@@ -62,16 +62,6 @@ export default defineConfig({
               cacheableResponse: { statuses: [200] },
             },
           },
-          {
-            urlPattern: /^https?:\/\/.*\.supabase\.co\/functions\/v1\/.*/i,
-            handler: 'NetworkFirst',
-            method: 'POST',
-            options: {
-              cacheName: 'supabase-functions-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 3600 },
-              cacheableResponse: { statuses: [200] },
-            },
-          },
         ],
       },
     }),

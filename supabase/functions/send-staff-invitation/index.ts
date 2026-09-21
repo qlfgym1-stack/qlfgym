@@ -2,6 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
+  'https://qlf-gym.vercel.app',
+  'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
   'https://qlfgym.vercel.app',
   'https://fitmanager-pro-dz-eight.vercel.app',
   'https://fitmanager-pro-dz.vercel.app',
