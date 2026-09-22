@@ -485,7 +485,7 @@ export default function PointagePage() {
       const result = rfidData.data as { result: string; reason?: string; member_id?: string; member_name?: string; action?: string; attendance_id?: string }
 
       // If member not found, try staff RFID clock
-      if (result.result === "denied" && result.reason?.includes("Badge inconnu")) {
+      if (result.result === "denied" && result.reason?.includes("Carte non trouvée")) {
         const staffData = await (supabase.rpc as any)("staff_rfid_clock", {
           p_rfid_uid: uid,
         })
@@ -655,45 +655,14 @@ export default function PointagePage() {
   const checkoutRfidMutation = useMutation({
     mutationFn: async (uid: string) => {
       if (!orgId) return { result: "denied" as const, reason: "Organisation non définie" }
-      const currentOrgId = orgId
-      const { data: card, error: cardErr } = await supabase
-        .from("rfid_cards")
-        .select("member_id, status")
-        .eq("rfid_uid", uid)
-        .eq("status", "ACTIF")
-        .single()
-      if (cardErr || !card) {
-        return { result: "denied" as const, reason: "Badge non trouvé ou inactif" }
+      const { data, error } = await (supabase.rpc as any)("rfid_check_out", {
+        p_card_uid: uid,
+        p_terminal: PAGE_TERMINAL,
+      })
+      if (error) {
+        return { result: "denied" as const, reason: error.message }
       }
-      const { data: member } = await supabase
-        .from("members")
-        .select("id, first_name, last_name, status")
-        .eq("id", card.member_id)
-        .eq("organization_id", currentOrgId)
-        .single()
-      if (!member || member.status !== "active") {
-        return { result: "denied" as const, reason: "Membre introuvable ou inactif" }
-      }
-      const { data: attendance, error: attErr } = await supabase
-        .from("attendance")
-        .select("id")
-        .eq("member_id", card.member_id)
-        .eq("organization_id", currentOrgId)
-        .is("check_out", null)
-        .not("check_in", "is", null)
-        .eq("type", "check-in")
-        .order("check_in", { ascending: false })
-        .limit(1)
-        .single()
-      if (attErr || !attendance) {
-        return { result: "denied" as const, reason: "Aucun check-in actif pour ce membre", member_name: `${member.first_name} ${member.last_name}` }
-      }
-      const { error: updateErr } = await supabase
-        .from("attendance")
-        .update({ check_out: new Date().toISOString() })
-        .eq("id", attendance.id)
-      if (updateErr) throw updateErr
-      return { result: "granted" as const, action: "check_out", member_name: `${member.first_name} ${member.last_name}`, member_id: member.id, attendance_id: attendance.id }
+      return data as { result: string; reason?: string; action?: string; member_name?: string; member_id?: string; attendance_id?: string }
     },
     onSuccess: async (data: { result: string; reason?: string; action?: string; member_name?: string; member_id?: string; attendance_id?: string }) => {
       setIsCheckoutScanning(false)
