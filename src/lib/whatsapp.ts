@@ -54,9 +54,18 @@ export function templateForStatus(status: string | null | undefined): WaTemplate
   return "renewal"
 }
 
-/** Couleur d'icône WhatsApp selon le statut d'abonnement. */
+/** Couleur d'icône WhatsApp selon le statut d'abonnement du membre.
+   - active → vert (abonnement actif, WhatsApp disponible)
+   - pending_payment → ambre (paiement en attente)
+   - expired/cancelled → rouge (abonnement expiré)
+*/
 export function toneForStatus(status: string | null | undefined): "green" | "amber" | "red" {
   if (status === "expired" || status === "cancelled") return "red"
   if (status === "pending_payment") return "amber"
   return "green"
+}
+
+/** Vérifie si le membre a un abonnement actif (icône WhatsApp affichée). */
+export function hasActiveSubscription(status: string | null | undefined): boolean {
+  return status === 'active' || status === 'pending_payment'
 }

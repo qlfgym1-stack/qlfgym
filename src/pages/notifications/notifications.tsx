@@ -21,7 +21,7 @@ import { useQuery, useMutation, useQueryClient } from "@/hooks/useQuery"
 import { formatDate, displayPhone } from "@/lib/utils"
 import { IS_MOCK } from "@/lib/config"
 import {
-  WaTemplateKey, WA_TEMPLATE_KEYS, DEFAULT_TEMPLATES, sendWhatsApp,
+  WaTemplateKey, WA_TEMPLATE_KEYS, DEFAULT_TEMPLATES, sendWhatsApp, toneForStatus, hasActiveSubscription,
 } from "@/lib/whatsapp"
 import { WhatsAppIcon } from "@/components/ui/whatsapp-button"
 import type { WhatsappOutbox } from "@/types/supabase"
@@ -223,6 +223,8 @@ const SubRowCard = memo(function SubRowCard({
   const phone = member?.phone ?? null
   const subName = sub.subscription_types?.name ?? "-"
   const daysLeft = Math.max(0, daysUntil(sub.end_date))
+  const tone = toneForStatus(sub.status)
+  const isActive = hasActiveSubscription(sub.status)
   return (
     <Card>
       <CardContent className="p-4">
@@ -246,6 +248,11 @@ const SubRowCard = memo(function SubRowCard({
                 <Badge variant={daysLeft === 0 ? "destructive" : "default"}>{daysLeft} j</Badge>
               )}
               {isExpired && <Badge variant="destructive">{t("notifications.expiredBadge") || "Expiré"}</Badge>}
+              {isActive && !isExpired && daysLeft <= 5 && daysLeft > 0 && (
+                <Badge variant="outline" className={tone === "amber" ? "border-amber-500 text-amber-600" : "border-green-500 text-green-600"}>
+                  {daysLeft <= 1 ? "J-1" : "J-5"}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{subName}</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -259,7 +266,7 @@ const SubRowCard = memo(function SubRowCard({
               title={phone ? "WhatsApp" : t("notifications.noPhone") || "Pas de téléphone"}
               onClick={() => phone && onWhatsApp({ member_id: sub.member_id, name, phone, date: sub.end_date, kind: isExpired ? "expired" : "renewal" })}
             >
-              <WhatsAppIcon className={`h-4 w-4 ${phone ? "text-[#25d366]" : "text-muted-foreground"}`} />
+              <WhatsAppIcon className={`h-4 w-4 ${phone ? `text-${tone === "green" ? "#25d366" : tone === "amber" ? "#f59e0b" : "#ef4444"}` : "text-muted-foreground"}`} />
             </Button>
         </div>
       </CardContent>
