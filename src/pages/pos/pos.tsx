@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from "react"
+﻿import React, { useState, useMemo, useEffect, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@/hooks/useQuery"
 import { useSupabase } from "@/hooks/useSupabase"
 import { useAuth } from "@/stores/auth"
@@ -325,6 +325,8 @@ export default function POSPage() {
   const [panelProductSearch, setPanelProductSearch] = useState("")
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
   const [corporateRemoved, setCorporateRemoved] = useState(false)
+  const checklistLockRef = useRef(false)
+  const checkoutIdempotencyKeyRef = useRef<string | null>(null)
   const [editSubId, setEditSubId] = useState<string | null>(null)
   const [editSubTypeId, setEditSubTypeId] = useState("")
   const [editSubStartDate, setEditSubStartDate] = useState("")
@@ -845,6 +847,7 @@ export default function POSPage() {
           p_total: total,
           p_payment_method: paymentMethod,
           p_user_id: user?.id ?? null,
+          p_idempotency_key: checkoutIdempotencyKeyRef.current,
         }
       )
       if (checkoutError) throw checkoutError
@@ -902,6 +905,8 @@ export default function POSPage() {
       }
     },
     onSuccess: async () => {
+      checklistLockRef.current = false
+      checkoutIdempotencyKeyRef.current = null
       setShowCheckout(false)
       setShowSuccess(true)
       setCart([])
@@ -922,7 +927,7 @@ export default function POSPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) queryClient.invalidateQueries({ queryKey: ["member-subscriptions", user.id] })
     },
-    onError: (err: Error) => toast({ title: t("errors.generic"), description: err.message, variant: "destructive" }),
+    onError: (err: Error) => { checklistLockRef.current = false; checkoutIdempotencyKeyRef.current = null; toast({ title: t("errors.generic"), description: err.message, variant: "destructive" }) },
   })
 
   return (
@@ -1166,7 +1171,24 @@ export default function POSPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCheckout(false)}>{t("pos.cancel")}</Button>
-            <Button onClick={() => checkoutMutation.mutate()} disabled={checkoutMutation.isPending}>
+            <Button
+              onClick={() => {
+                if (checklistLockRef.current) return
+                if (!checkoutIdempotencyKeyRef.current) checkoutIdempotencyKeyRef.current = crypto.randomUUID()
+                checklistLockRef.current = true
+                checkoutMutation.mutate()
+              }}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  if (checklistLockRef.current) { e.preventDefault(); return }
+                  if (!checkoutIdempotencyKeyRef.current) checkoutIdempotencyKeyRef.current = crypto.randomUUID()
+                  checklistLockRef.current = true
+                  e.preventDefault()
+                  checkoutMutation.mutate()
+                }
+              }}
+              disabled={checkoutMutation.isPending}
+            >
               {checkoutMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("pos.confirmPayment")}
             </Button>
