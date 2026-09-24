@@ -183,6 +183,7 @@ serve(async (req) => {
       // Create whatsapp_outbox entry if member has a phone
       if (phone) {
         whatsappOutbox.push({
+          organization_id: sub.members.organization_id,
           member_id: sub.member_id,
           member_name: `${sub.members.first_name} ${sub.members.last_name}`,
           phone: phone,
