@@ -75,11 +75,11 @@ serve(async (req) => {
     // Get today's date
     const today = new Date().toISOString().split('T')[0]
 
-    // Get ready/queued whatsapp_outbox entries scheduled for today or earlier
+    // Get ready whatsapp_outbox entries (pending_manual requires admin approval first)
     const { data: outboxEntries } = await supabase
       .from('whatsapp_outbox')
       .select('*')
-      .in('status', ['ready', 'queued'])
+      .eq('status', 'ready')
       .lte('scheduled_for', today)
       .limit(100)
 
@@ -108,15 +108,15 @@ serve(async (req) => {
       const text = encodeURIComponent(message)
       const waUrl = `https://web.whatsapp.com/send?phone=${digits}&text=${text}`
 
-      // Update status to sent_via_link and store the link
-      await supabase
-        .from('whatsapp_outbox')
-        .update({
-          status: 'sent_via_link',
-          sent_at: new Date().toISOString(),
-          message_url: waUrl,
-        })
-        .eq('id', entry.id)
+       // Update status to sent_via_link and store the link
+       await supabase
+         .from('whatsapp_outbox')
+         .update({
+           status: 'sent_via_link',
+           sent_at: new Date().toISOString(),
+           send_date: new Date().toISOString(),
+         })
+         .eq('id', entry.id)
 
       sent++
     }

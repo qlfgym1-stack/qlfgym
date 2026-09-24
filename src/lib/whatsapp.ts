@@ -60,9 +60,10 @@ export function templateForStatus(status: string | null | undefined): WaTemplate
    - expired/cancelled → rouge (abonnement expiré)
 */
 export function toneForStatus(status: string | null | undefined): "green" | "amber" | "red" {
-  if (status === "expired" || status === "cancelled") return "red"
-  if (status === "pending_payment") return "amber"
-  return "green"
+  if (status === 'expired' || status === 'cancelled') return 'red'
+  if (status === 'pending_payment') return 'amber'
+  if (status === 'pending_manual') return 'amber'
+  return 'green'
 }
 
 /** Vérifie si le membre a un abonnement actif (icône WhatsApp affichée). */

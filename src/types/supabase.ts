@@ -279,10 +279,10 @@ recovery_code_logs: {
         Update: { id?: string; organization_id?: string; user_id?: string | null; member_id?: string | null; source?: 'subscription' | 'pos'; payment_id?: string | null; pos_transaction_id?: string | null; action?: 'modify' | 'cancel'; old_data?: Json | null; new_data?: Json | null; reason?: string | null; created_at?: string }
         Relationships: []
       }
-      whatsapp_outbox: {
-        Row: { id: string; organization_id: string; member_id: string | null; member_name: string | null; phone: string | null; template_key: string; message: string; status: 'ready' | 'sent_via_link' | 'queued' | 'sent' | 'failed'; created_by: string | null; sent_at: string | null; created_at: string }
-        Insert: { id?: string; organization_id: string; member_id?: string | null; member_name?: string | null; phone?: string | null; template_key?: string; message?: string; status?: 'ready' | 'sent_via_link' | 'queued' | 'sent' | 'failed'; created_by?: string | null; sent_at?: string | null; created_at?: string }
-        Update: { id?: string; organization_id?: string; member_id?: string | null; member_name?: string | null; phone?: string | null; template_key?: string; message?: string; status?: 'ready' | 'sent_via_link' | 'queued' | 'sent' | 'failed'; created_by?: string | null; sent_at?: string | null; created_at?: string }
+whatsapp_outbox: {
+        Row: { id: string; organization_id: string; member_id: string | null; member_name: string | null; phone: string | null; template_key: string; message: string; status: 'ready' | 'sent_via_link' | 'queued' | 'sent' | 'failed' | 'pending_manual'; created_by: string | null; sent_at: string | null; send_date: string | null; scheduled_for: string | null; delay_label: string | null; created_at: string }
+        Insert: { id?: string; organization_id: string; member_id?: string | null; member_name?: string | null; phone?: string | null; template_key?: string; message?: string; status?: 'ready' | 'sent_via_link' | 'queued' | 'sent' | 'failed' | 'pending_manual'; created_by?: string | null; sent_at?: string | null; send_date?: string | null; scheduled_for?: string | null; delay_label?: string | null; created_at?: string }
+        Update: { id?: string; organization_id?: string; member_id?: string | null; member_name?: string | null; phone?: string | null; template_key?: string; message?: string; status?: 'ready' | 'sent_via_link' | 'queued' | 'sent' | 'failed' | 'pending_manual'; created_by?: string | null; sent_at?: string | null; send_date?: string | null; scheduled_for?: string | null; delay_label?: string | null; created_at?: string }
         Relationships: []
       }
       audit_logs: {

@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const allowedOrigins = [
   'https://qlf-gym.vercel.app',
   'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
-  'https://qlfgym.vercel.app',
+  'https://qlf-gym.vercel.app',
   'https://fitmanager-pro-dz-eight.vercel.app',
   'https://fitmanager-pro-dz.vercel.app',
   'https://qlfgym1-stack.github.io',
@@ -12,7 +12,7 @@ const allowedOrigins = [
   'http://localhost:3000',
 ]
 
-function getCorsHeaders(request: Request) {
+function getCORSHeaders(request: Request) {
   const origin = request.headers.get('origin') || ''
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'null'
   return {
@@ -23,7 +23,7 @@ function getCorsHeaders(request: Request) {
   }
 }
 
-const DELAYS = [5, 1]
+const DELAYS = [5, 3, 1]
 
 function templateForStatus(status: string | null | undefined): string {
   if (status === 'pending_payment') return 'renewal'
@@ -52,24 +52,28 @@ function getDateOffset(days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-function sendWhatsAppMsg(phone: string, message: string, supabase: ReturnType<typeof createClient>): boolean {
-  const digits = formatWhatsAppPhone(phone)
-  if (!digits) return false
-  const text = encodeURIComponent(message)
-  const url = `https://web.whatsapp.com/send?phone=${digits}&text=${text}`
-  // For server-side: we open the WhatsApp Web link and store it in outbox
-  // The user clicks the link from their browser to send
-  return true
+function delayLabel(delay: number): string {
+  if (delay === 5) return 'J-5'
+  if (delay === 3) return 'J-3'
+  if (delay === 1) return 'J-1'
+  return `J-${delay}`
+}
+
+function delayText(delay: number): string {
+  if (delay === 5) return '5 jours'
+  if (delay === 3) return '3 jours'
+  if (delay === 1) return '1 jour'
+  return `${delay} jours`
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: getCorsHeaders(req) })
+    return new Response(null, { status: 204, headers: getCORSHeaders(req) })
   }
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...getCORSHeaders(req) },
     })
   }
   try {
@@ -78,7 +82,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseKey) {
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        headers: { 'Content-Type': 'application/json', ...getCORSHeaders(req) },
       })
     }
 
@@ -86,7 +90,7 @@ serve(async (req) => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        headers: { 'Content-Type': 'application/json', ...getCORSHeaders(req) },
       })
     }
     const token = authHeader.slice(7)
@@ -95,7 +99,7 @@ serve(async (req) => {
     if (!authOk) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        headers: { 'Content-Type': 'application/json', ...getCORSHeaders(req) },
       })
     }
 
@@ -117,6 +121,15 @@ serve(async (req) => {
 
       if (subs?.length) {
         for (const sub of subs) {
+          // RENEWAL CHECK: verify the subscription end_date hasn't changed (member renewed)
+          const { data: freshSub } = await supabase
+            .from('member_subscriptions')
+            .select('end_date, status')
+            .eq('id', sub.id)
+            .single()
+          if (freshSub?.end_date !== targetDate) continue
+          if (freshSub?.status !== 'active' && freshSub?.status !== 'pending_payment') continue
+
           // Check if notification already sent for this subscription today
           const { data: existing } = await supabase
             .from('notifications')
@@ -126,15 +139,11 @@ serve(async (req) => {
             .contains('data', { member_subscription_id: sub.id })
           if (existing?.length) continue
 
-          const delayDays = delay
-          const isJ5 = delay === 5
-          const isJ1 = delay === 1
-
           allExpiringSubs.push({
             ...sub,
             _delay: delay,
-            _isJ5: isJ5,
-            _isJ1: isJ1,
+            _delayLabel: delayLabel(delay),
+            _delayText: delayText(delay),
             _endDate: targetDate,
           })
         }
@@ -142,7 +151,7 @@ serve(async (req) => {
     }
 
     if (!allExpiringSubs.length) {
-      return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) } })
+      return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json', ...getCORSHeaders(req) } })
     }
 
     const orgIds = [...new Set(allExpiringSubs.map((sub: any) => sub.members.organization_id))]
@@ -161,7 +170,6 @@ serve(async (req) => {
     const whatsappOutbox: any[] = []
 
     for (const sub of allExpiringSubs) {
-      const delayLabel = sub._delay === 5 ? 'J-5' : 'J-1'
       const message = buildMessage(
         sub.members.first_name,
         sub._endDate,
@@ -173,14 +181,14 @@ serve(async (req) => {
         notifications.push({
           organization_id: sub.members.organization_id,
           user_id: userId,
-          title: `Abonnement expire ${delayLabel}`,
-          message: `L'abonnement de ${sub.members.first_name} ${sub.members.last_name} expire le ${sub._endDate}`,
+          title: `Abonnement expire ${sub._delayLabel}`,
+          message: `L'abonnement de ${sub.members.first_name} ${sub.members.last_name} expire le ${sub._endDate} (${sub._delayText})`,
           type: 'subscription_expiring',
           data: { member_subscription_id: sub.id, member_id: sub.member_id, delay: sub._delay },
         })
       }
 
-      // Create whatsapp_outbox entry if member has a phone
+      // Create whatsapp_outbox entry with status 'pending_manual' for admin approval
       if (phone) {
         whatsappOutbox.push({
           organization_id: sub.members.organization_id,
@@ -189,9 +197,9 @@ serve(async (req) => {
           phone: phone,
           template_key: 'renewal',
           message: message,
-          status: 'ready',
+          status: 'pending_manual',
           scheduled_for: sub._endDate,
-          delay_label: delayLabel,
+          delay_label: sub._delayLabel,
         })
       }
     }
@@ -215,17 +223,17 @@ serve(async (req) => {
       if (notifError) console.error('Notifications insert error:', notifError)
     }
 
-    // Insert whatsapp_outbox
+    // Insert whatsapp_outbox (status = pending_manual for manual approval)
     if (whatsappOutbox.length) {
       const { error: outboxError } = await supabase.from('whatsapp_outbox').insert(whatsappOutbox)
       if (outboxError) console.error('Outbox insert error:', outboxError)
     }
 
     return new Response(JSON.stringify({ sent: uniqueNotifications.length, whatsapp: whatsappOutbox.length }), {
-      headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+      headers: { 'Content-Type': 'application/json', ...getCORSHeaders(req) },
     })
   } catch (err) {
     console.error('Error:', err)
-    return new Response(JSON.stringify({ error: 'An unexpected error occurred' }), { status: 500, headers: { ...getCorsHeaders(req) } })
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred' }), { status: 500, headers: { ...getCORSHeaders(req) } })
   }
 })

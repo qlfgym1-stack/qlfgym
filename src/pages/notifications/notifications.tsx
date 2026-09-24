@@ -30,7 +30,9 @@ import {
   Settings2, Send, CalendarClock, CalendarX, Loader2, Cake, Search, History, Users, CheckCircle, X, Package,
 } from "lucide-react"
 
-type TopTab = "renewals" | "expired" | "birthdays" | "sessions" | "campaign" | "history"
+import { RemindersTab } from "@/pages/notifications/RemindersTab"
+
+type TopTab = "renewals" | "expired" | "birthdays" | "sessions" | "campaign" | "history" | "reminders"
 type CampaignStatus = "all" | "active" | "inactive" | "suspended" | "blocked"
 
 interface SubWithRelations {
@@ -120,6 +122,8 @@ function outboxStatusLabel(t: (key: string) => string, s: WhatsappOutbox["status
     case "queued": return t("notifications.waStatusQueued") || "En file"
     case "sent": return t("notifications.waStatusSent") || "Envoyé"
     case "failed": return t("notifications.waStatusFailed") || "Échec"
+    case "pending_manual": return t("notifications.pendingApproval") || "En attente"
+    default: return s
   }
 }
 
@@ -921,8 +925,9 @@ export default function NotificationsPage() {
           <TabsTrigger value="expired">{t("notifications.expired") || "Expirés"}</TabsTrigger>
           <TabsTrigger value="birthdays">{t("notifications.birthdays") || "Anniversaires"}</TabsTrigger>
           <TabsTrigger value="sessions">{t("notifications.sessions") || "Séances libres"}</TabsTrigger>
-          <TabsTrigger value="campaign">{t("notifications.campaign") || "Campagne WhatsApp"}</TabsTrigger>
-          <TabsTrigger value="history">{t("notifications.history") || "Historique"}</TabsTrigger>
+           <TabsTrigger value="campaign">{t("notifications.campaign") || "Campagne WhatsApp"}</TabsTrigger>
+           <TabsTrigger value="history">{t("notifications.history") || "Historique"}</TabsTrigger>
+           <TabsTrigger value="reminders">{t("notifications.reminders") || "Rappels"}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="renewals">
@@ -1285,6 +1290,9 @@ export default function NotificationsPage() {
             </div>
           </TabsContent>
         )}
+        <TabsContent value="reminders">
+          <RemindersTab orgId={orgId} />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
