@@ -15,7 +15,9 @@ schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
 # for accidental or malicious requests.
-max_rows = 1000
+# 1000 tronquait les requêtes d'agrégation (dashboard, member-insights, rentabilité,
+# assistant comptable) : monté à 10000 pour ne pas couper les résultats légitimes.
+max_rows = 10000
 # Controls whether new tables, views, sequences and functions created in the `public` schema by
 # `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
 # without explicit GRANTs. Leave unset today to preserve local behaviour. The implicit default
@@ -68,7 +70,7 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = ["./seed_admin.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
@@ -381,6 +383,39 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+# Edge Functions — `verify_jwt` aligné sur la validation JWT déjà implémentée
+# côté code (les fonctions publiques lisent/créent le user via le header
+# Authorization, les privées exigent un JWT valide).
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.recovery]
+verify_jwt = false
+
+[functions.sign-in-with-recovery]
+verify_jwt = false
+
+[functions.send-subscription-reminder]
+verify_jwt = true
+
+[functions.send-payment-reminder]
+verify_jwt = true
+
+[functions.send-whatsapp-notifications]
+verify_jwt = true
+
+[functions.create-notification]
+verify_jwt = true
+
+[functions.send-staff-invitation]
+verify_jwt = true
+
+[functions.admin-manage-users]
+verify_jwt = true
+
+[functions.ensure-super-admin]
+verify_jwt = true
 
 [analytics]
 enabled = true

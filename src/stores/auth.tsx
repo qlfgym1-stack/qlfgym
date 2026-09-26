@@ -22,6 +22,26 @@ const ROLE_RANK: Record<string, number> = {
   super_admin: 6, admin: 5, coach: 4, staff: 3, receptionist: 2, cleaner: 1,
 }
 
+/**
+ * Purge les réponses API mises en cache par le service worker (stratégie
+ * NetworkFirst sur `*.supabase.co/rest/v1/*`). Indispensable à la connexion
+ * et à la déconnexion : sans cela, les données de l'organisation précédente
+ * restent lisibles sur le poste pour la personne suivante, en mode hors-ligne.
+ */
+async function purgeAuthCaches(): Promise<void> {
+  try {
+    if (typeof caches === 'undefined') return
+    const keys = await caches.keys()
+    await Promise.all(
+      keys
+        .filter((k) => k.startsWith('supabase-api-cache') || k.startsWith('fitmanager-cache') || k.includes('workbox'))
+        .map((k) => caches.delete(k)),
+    )
+  } catch {
+    /* Cache API indisponible (navigation privée) : ignoré */
+  }
+}
+
 export function topRoleOf(roles: UserRole[]): TopRole {
   if (!roles || roles.length === 0) return null
   let best: TopRole = null
@@ -126,6 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshLockRef = useRef(false)
   const proactiveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const fetchSeqRef = useRef(0)
+  // Titulaire du cache API Workbox courant : sert de pivot pour purger le
+  // cache dès que la session appartient à un autre utilisateur.
+  const cachedUserIdRef = useRef<string | null>(null)
 
   const tryRefreshSession = useCallback(async (retryCount = 0): Promise<boolean> => {
     if (refreshLockRef.current) return false
@@ -166,6 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       const user = session.user
+      // Purge du cache API si la session change de titulaire : sans ce garde,
+      // un utilisateur B pourrait lire les réponses hors-ligne mises en cache
+      // pour l'utilisateur A sur le même poste (cache non partitionné par user).
+      if (cachedUserIdRef.current !== user.id) {
+        cachedUserIdRef.current = user.id
+        await purgeAuthCaches()
+      }
       const profile: Profile = { id: user.id, email: user.email ?? '', full_name: user.user_metadata?.full_name, avatar_url: user.user_metadata?.avatar_url }
       const { data: roles, error: rolesError } = await supabase.from('user_roles').select('*').eq('user_id', user.id)
       if (rolesError) {
@@ -425,7 +455,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (proactiveTimerRef.current) clearInterval(proactiveTimerRef.current)
       await supabase.auth.signOut()
       queryClient.clear()
+      // Purge du cache API Workbox : évite de laisser des réponses
+      // Supabase (données de l'org) lisibles par l'utilisateur suivant
+      // sur le même poste.
+      await purgeAuthCaches()
     } finally {
+      cachedUserIdRef.current = null
       setState(s => ({ ...s, user: null, profile: null, organization: null, roles: [], isAuthenticated: false, authError: null }))
     }
   }, [supabase])

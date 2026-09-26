@@ -85,6 +85,7 @@ export function MemberDayDetail({ memberId, memberName, date, open, onOpenChange
           .select("id, total, payment_method, items, created_at")
           .eq("organization_id", orgId)
           .eq("member_id", memberId)
+          .eq("payment_status", "completed")
           .is("cancelled_at", null)
           .gte("created_at", from)
           .lte("created_at", to)

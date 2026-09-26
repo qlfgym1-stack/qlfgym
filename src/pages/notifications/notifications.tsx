@@ -646,6 +646,8 @@ export default function NotificationsPage() {
         .from("pos_transactions")
         .select("id, member_id, created_at, items, members(first_name, last_name, phone, member_number)")
         .eq("organization_id", orgId)
+        .eq("payment_status", "completed")
+        .is("cancelled_at", null)
         .order("created_at", { ascending: false })
         .limit(200)
       if (error) throw error

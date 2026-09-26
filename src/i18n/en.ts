@@ -66,6 +66,7 @@ const en = {
     reports: "Reports",
     pointage: "Timesheet",
     encaissement: "Cash Register",
+    assistantComptable: "Accounting Assistant",
     payroll: "Payroll",
     expenses: "Expenses",
     equipmentReport: "Equipment Report",
@@ -879,6 +880,7 @@ const en = {
   inventory: {
     title: "Inventory",
     description: "Manage stock",
+    supplier: "Supplier",
     add: "Add Item",
     edit: "Edit",
     delete: "Delete",

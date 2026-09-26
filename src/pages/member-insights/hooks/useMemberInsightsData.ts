@@ -190,6 +190,8 @@ export function useMemberInsightsData(): MemberInsightsData {
         .from("payments")
         .select("id, member_id, subscription_id, amount, payment_method, payment_date, status")
         .eq("organization_id", orgId!)
+        .eq("status", "completed")
+        .is("cancelled_at", null)
       if (error) throw error
       return (data ?? []).map((r: {
         id: string

@@ -553,16 +553,32 @@ export function useAccountingData(
       const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
       const { data } = await supabase
         .from("pos_transactions")
-        .select("total, created_at")
+        .select("total, created_at, member_id, items")
         .eq("organization_id", orgId)
         .eq("payment_status", "completed")
         .gte("created_at", mStart.toISOString())
-      return ((data ?? []) as { total: number; created_at: string }[]).map(
-        (r) => ({ total: r.total, day: r.created_at.slice(0, 10) }),
+      return ((data ?? []) as { total: number; created_at: string; member_id: string | null; items: unknown }[]).map(
+        (r) => ({ total: r.total, day: r.created_at.slice(0, 10), member_id: r.member_id, items: r.items }),
       )
     },
     enabled: !!orgId,
   })
+
+  const summaryPosFiltered = useMemo(() => {
+    const keys = buildSubscriptionKeys((summaryPayments as { amount: number; payment_date: string }[]).map((p) => ({
+      memberId: null,
+      amount: safeNum(p.amount),
+      date: p.payment_date,
+    })))
+    return (summaryPos as { total: number; day: string; member_id: string | null; items: unknown }[]).filter(
+      (t) => !isDuplicateSubscriptionPos({
+        memberId: t.member_id ?? null,
+        amount: safeNum(t.total),
+        date: t.day,
+        items: t.items,
+      }, keys),
+    )
+  }, [summaryPos, summaryPayments])
 
   const { data: summaryExpenses = [] } = useQuery({
     queryKey: ["ac-summary-exp", orgId],

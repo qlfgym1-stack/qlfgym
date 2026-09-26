@@ -19,6 +19,13 @@ export default function DisplayPage() {
   const openMember = useOpenMember()
 
   const today = new Date().toISOString().slice(0, 10)
+  const isoDay = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+
+  const formatTime = (v: string | null | undefined) => {
+    if (!v) return ""
+    const parts = v.split(":")
+    return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : v
+  }
 
   const { data: todayCheckins = [] } = useQuery({
     queryKey: ["display-checkins", orgId],
@@ -48,19 +55,19 @@ export default function DisplayPage() {
       if (!orgId) return []
       const { data } = await supabase
         .from("classes")
-        .select("id, name, start_time, end_time, capacity, staff!inner(first_name, last_name)")
+        .select("id, name, start_time, end_time, max_capacity, staff!inner(first_name, last_name)")
         .eq("organization_id", orgId)
-        .gte("start_time", today)
-        .lt("start_time", new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+        .eq("recurring", true)
+        .eq("day_of_week", isoDay)
         .order("start_time")
         .limit(10)
       return (data ?? []).map((r: any) => ({
         id: r.id,
         name: r.name,
-        time: `${new Date(r.start_time).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} - ${new Date(r.end_time).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`,
+        time: `${formatTime(r.start_time)} - ${formatTime(r.end_time)}`,
         coach: `${r.staff?.first_name ?? ""} ${r.staff?.last_name ?? ""}`,
         enrolled: 0,
-        capacity: r.capacity ?? 0,
+        capacity: r.max_capacity ?? 0,
       }))
     },
     enabled: !!orgId,
@@ -72,7 +79,7 @@ export default function DisplayPage() {
       if (!orgId) return { checkins: 0, members: 0, classes: 0, active: 0 }
       const { count: checkins } = await supabase.from("attendance").select("*", { count: "exact", head: true }).eq("organization_id", orgId).gte("check_in", today)
       const { count: members } = await supabase.from("members").select("*", { count: "exact", head: true }).eq("organization_id", orgId)
-      const { count: classes } = await supabase.from("classes").select("*", { count: "exact", head: true }).eq("organization_id", orgId).gte("start_time", today).lt("start_time", new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+      const { count: classes } = await supabase.from("classes").select("*", { count: "exact", head: true }).eq("organization_id", orgId).eq("recurring", true).eq("day_of_week", isoDay)
       const { count: active } = await supabase.from("members").select("*", { count: "exact", head: true }).eq("organization_id", orgId).eq("status", "active")
       return { checkins: checkins ?? 0, members: members ?? 0, classes: classes ?? 0, active: active ?? 0 }
     },

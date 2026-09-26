@@ -46,12 +46,28 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        globIgnores: ['**/Coach QLF AI.png'],
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Ne précacher que le shell + les assets. Précacher tous les chunks JS
+        // annulait le code-splitting (132 fichiers / ~4,5 Mo téléchargés d'un
+        // coup) et alourdissait l'installation PWA au premier chargement.
+        globPatterns: ['**/*.{html,ico,png,svg,woff2}'],
+        globIgnores: ['**/Coach QLF AI.png', '**/assets/*.js', '**/assets/*.css'],
+        navigateFallback: 'index.html',
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/version\.json$/, /\.(?:json|png|ico|webp|svg|woff2?|txt)$/],
         runtimeCaching: [
+          // Assets JS/CSS produits par Vite : mis en cache au fur et à mesure
+          // de la navigation (respect du code-splitting).
+          {
+            urlPattern: ({ request }: { request: Request }) =>
+              request.destination === 'script' || request.destination === 'style',
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'fitmanager-assets',
+              expiration: { maxEntries: 160, maxAgeSeconds: 7 * 86400 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /^https?:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
             handler: 'NetworkFirst',

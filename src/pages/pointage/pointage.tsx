@@ -227,6 +227,7 @@ export default function PointagePage() {
           .from("pos_transactions")
           .select("total")
           .eq("organization_id", orgId)
+          .eq("payment_status", "completed")
           .is("cancelled_at", null)
           .gte("created_at", selectedDate)
           .lt("created_at", nextDayStr)

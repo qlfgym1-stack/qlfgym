@@ -119,7 +119,7 @@ export default function ReservationsPage() {
       const { error } = await supabase.from("equipment_reservations").insert({
         equipment_id: values.equipmentId,
         member_id: values.memberId,
-        organization_id: (await supabase.auth.getUser()).data.user?.id ?? "",
+        organization_id: orgId ?? "",
         start_time: values.startTime,
         end_time: values.endTime,
         status: "confirmed",

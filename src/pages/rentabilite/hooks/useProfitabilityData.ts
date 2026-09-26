@@ -315,13 +315,13 @@ export function useProfitabilityData(
     const otherRevenue = 0
     const totalRevenue = subscriptionRevenue + posRevenue + otherRevenue
 
-    const posCostFromProducts = posTransactions.reduce((s: number, t: RawPosTransaction) => {
+    const posCostFromProducts = filteredPosTransactions.reduce((s: number, t: RawPosTransaction) => {
       const items = Array.isArray(t.items) ? t.items : []
       return items.reduce((is2: number, item: unknown) => {
         if (typeof item !== "object" || item === null) return is2
         const obj = item as Record<string, unknown>
         if (typeof obj.id === "string" && obj.id.startsWith("__subscription__")) return is2
-        const productId = typeof obj.productId === "string" ? obj.productId : null
+        const productId = typeof obj.id === "string" && !obj.id.startsWith("__") ? obj.id : null
         const qty = safeNum(obj.quantity ?? obj.qty)
         if (productId) {
           const product = products.find((p: RawProduct) => p.id === productId)
@@ -439,14 +439,14 @@ export function useProfitabilityData(
     })()
 
     const profitabilityByProduct: ProfitabilityItem[] = products.map((prod: RawProduct) => {
-      const productPosCount = posTransactions.reduce((count: number, t: RawPosTransaction) => {
+      const productPosCount = filteredPosTransactions.reduce((count: number, t: RawPosTransaction) => {
         const items = Array.isArray(t.items) ? t.items : []
         return (
           count +
           items.reduce((ic: number, item: unknown) => {
             if (typeof item !== "object" || item === null) return ic
             const obj = item as Record<string, unknown>
-            if (obj.productId === prod.id) return ic + safeNum(obj.quantity ?? obj.qty)
+            if (obj.id === prod.id) return ic + safeNum(obj.quantity ?? obj.qty)
             return ic
           }, 0)
         )
@@ -470,14 +470,14 @@ export function useProfitabilityData(
       for (const prod of products) {
         const cat = prod.category || "Autres"
         if (!catMap[cat]) catMap[cat] = { revenue: 0, cost: 0 }
-        const qty = posTransactions.reduce((count: number, t: RawPosTransaction) => {
+        const qty = filteredPosTransactions.reduce((count: number, t: RawPosTransaction) => {
           const items = Array.isArray(t.items) ? t.items : []
           return (
             count +
             items.reduce((ic: number, item: unknown) => {
               if (typeof item !== "object" || item === null) return ic
               const obj = item as Record<string, unknown>
-              if (obj.productId === prod.id) return ic + safeNum(obj.quantity ?? obj.qty)
+              if (obj.id === prod.id) return ic + safeNum(obj.quantity ?? obj.qty)
               return ic
             }, 0)
           )

@@ -81,7 +81,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       const dict = translations[locale] as Record<string, TranslationValue> | undefined;
       if (!dict) return toUpper(key);
       const value = resolveKey(dict, key);
-      return CASE_PRESERVE_KEYS.has(key) ? value : toUpper(value);
+      if (CASE_PRESERVE_KEYS.has(key) || !value.includes("{")) return CASE_PRESERVE_KEYS.has(key) ? value : toUpper(value);
+      // Préserver les placeholders {x} (ex. {count}, {MEMBER}, {EMAIL}) tout en
+      // gardant le style MAJUSCULES du reste de la chaîne.
+      return value
+        .split(/(\{[^{}]*\})/g)
+        .map((part) => (part.startsWith("{") && part.endsWith("}") ? part : toUpper(part)))
+        .join("");
     },
     [locale],
   );
