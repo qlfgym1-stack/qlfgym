@@ -152,7 +152,7 @@ export default function PointagePage() {
     if (!orgId) return
     ;(async () => {
       try {
-        await (supabase.rpc as any)("auto_close_stale_attendances")
+        await (supabase.rpc as any)("auto_close_stale_attendances", { p_organization_id: orgId })
       } catch (e) {
         console.warn('auto_close_stale_attendances failed:', e)
       }

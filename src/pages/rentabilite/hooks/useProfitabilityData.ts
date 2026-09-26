@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 import { useQuery } from "@/hooks/useQuery"
 import { useSupabase } from "@/hooks/useSupabase"
-import type { ProfitabilityData, ProfitabilityFilters, ProfitabilityItem } from "./types"
+import type { InvestmentCategory, ProfitabilityData, ProfitabilityFilters, ProfitabilityItem } from "./types"
 import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
 
 function safeNum(v: unknown): number {
@@ -333,7 +333,7 @@ export function useProfitabilityData(
       }, s)
     }, 0)
 
-    const costOfSales = posCostFromProducts > 0 ? posCostFromProducts : totalRevenue * 0.4
+    const costOfSales = posCostFromProducts > 0 ? posCostFromProducts : posRevenue * 0.55
     const grossProfit = totalRevenue - costOfSales
     const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0
 
@@ -395,20 +395,48 @@ export function useProfitabilityData(
       },
     ]
 
-    const roiData = investmentsByCategory.map((inv) => {
-      const returnAmount = totalInvestment > 0 ? (totalRevenue / totalInvestment) * inv.amount : 0
-      const roi = inv.amount > 0 ? ((returnAmount - inv.amount) / inv.amount) * 100 : 0
-      const monthlyRevenue = totalRevenue / 12
-      const monthsToRecoup = monthlyRevenue > 0 ? inv.amount / monthlyRevenue : 0
-      return {
-        category: inv.category,
-        label: inv.label,
-        invested: inv.amount,
-        returnAmount,
-        roi,
-        monthsToRecoup,
+    const roiData = (() => {
+      // Attribuer les revenus aux catégories d'investissement selon leur source :
+      // - acquisitions/marketing/logiciels -> revenus abonnements
+      // - stock/produits/matériel          -> revenus POS
+      // - autres (travaux, aménagement)    -> revenu total
+      const SUB_DRIVERS = new Set(["marketing", "publicite", "formation", "logiciels"])
+      const POS_DRIVERS = new Set(["produits", "consommables", "materiel"])
+      const groupFor = (cat: string): "sub" | "pos" | "all" =>
+        SUB_DRIVERS.has(cat) ? "sub" : POS_DRIVERS.has(cat) ? "pos" : "all"
+
+      const byGroup: Record<"sub" | "pos" | "all", InvestmentCategory[]> = {
+        sub: [],
+        pos: [],
+        all: [],
       }
-    })
+      for (const inv of investmentsByCategory) byGroup[groupFor(inv.category)].push(inv)
+
+      const groupRevenue: Record<"sub" | "pos" | "all", number> = {
+        sub: subscriptionRevenue,
+        pos: posRevenue,
+        all: totalRevenue,
+      }
+
+      return investmentsByCategory.map((inv) => {
+        const group = groupFor(inv.category)
+        const groupInvestors = byGroup[group]
+        const groupInvTotal = groupInvestors.reduce((s, c) => s + c.amount, 0)
+        const share = groupInvTotal > 0 ? inv.amount / groupInvTotal : 0
+        const returnAmount = groupRevenue[group] * share
+        const roi = inv.amount > 0 ? ((returnAmount - inv.amount) / inv.amount) * 100 : 0
+        const monthlyRevenue = totalRevenue / 12
+        const monthsToRecoup = monthlyRevenue > 0 ? inv.amount / monthlyRevenue : 0
+        return {
+          category: inv.category,
+          label: inv.label,
+          invested: inv.amount,
+          returnAmount,
+          roi,
+          monthsToRecoup,
+        }
+      })
+    })()
 
     const profitabilityByProduct: ProfitabilityItem[] = products.map((prod: RawProduct) => {
       const productPosCount = posTransactions.reduce((count: number, t: RawPosTransaction) => {
@@ -509,17 +537,18 @@ export function useProfitabilityData(
         const key = getMonthLabel(t.created_at)
         if (!monthMap[key]) monthMap[key] = { revenue: 0, expense: 0 }
         const items = Array.isArray(t.items) ? t.items : []
-        const hasSub = items.some(
+        const hasVirtual = items.some(
           (it: unknown) =>
             typeof it === "object" &&
             it !== null &&
             "id" in it &&
             typeof (it as Record<string, unknown>).id === "string" &&
-            (it as any).id.startsWith("__subscription__")
+            ((it as any).id.startsWith("__subscription__") || (it as any).id.startsWith("__renewal__"))
         )
-        if (!hasSub) monthMap[key].revenue += safeNum(t.total)
+        if (!hasVirtual) monthMap[key].revenue += safeNum(t.total)
       }
       for (const e of expenses) {
+        if (e.category === 'salaries') continue
         const key = getMonthLabel(e.expense_date)
         if (!monthMap[key]) monthMap[key] = { revenue: 0, expense: 0 }
         monthMap[key].expense += safeNum(e.amount)
@@ -550,17 +579,18 @@ export function useProfitabilityData(
         const key = String(new Date(t.created_at).getFullYear())
         if (!yearMap[key]) yearMap[key] = { revenue: 0, expense: 0 }
         const items = Array.isArray(t.items) ? t.items : []
-        const hasSub = items.some(
+        const hasVirtual = items.some(
           (it: unknown) =>
             typeof it === "object" &&
             it !== null &&
             "id" in it &&
             typeof (it as Record<string, unknown>).id === "string" &&
-            (it as any).id.startsWith("__subscription__")
+            ((it as any).id.startsWith("__subscription__") || (it as any).id.startsWith("__renewal__"))
         )
-        if (!hasSub) yearMap[key].revenue += safeNum(t.total)
+        if (!hasVirtual) yearMap[key].revenue += safeNum(t.total)
       }
       for (const e of expenses) {
+        if (e.category === 'salaries') continue
         const key = String(new Date(e.expense_date).getFullYear())
         if (!yearMap[key]) yearMap[key] = { revenue: 0, expense: 0 }
         yearMap[key].expense += safeNum(e.amount)
@@ -591,18 +621,18 @@ export function useProfitabilityData(
         for (const p of payments) {
           if (p.payment_date.startsWith(key)) total += safeNum(p.amount)
         }
-        for (const t of posTransactions) {
+        for (const t of filteredPosTransactions) {
           if (t.created_at.startsWith(key)) {
             const items = Array.isArray(t.items) ? t.items : []
-            const hasSub = items.some(
+            const hasVirtual = items.some(
               (it: unknown) =>
                 typeof it === "object" &&
                 it !== null &&
                 "id" in it &&
                 typeof (it as Record<string, unknown>).id === "string" &&
-                (it as any).id.startsWith("__subscription__")
+                ((it as any).id.startsWith("__subscription__") || (it as any).id.startsWith("__renewal__"))
             )
-            if (!hasSub) total += safeNum(t.total)
+            if (!hasVirtual) total += safeNum(t.total)
           }
         }
         result.push({ label, value: total })
@@ -619,6 +649,7 @@ export function useProfitabilityData(
         const label = `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
         let total = 0
         for (const e of expenses) {
+          if (e.category === 'salaries') continue
           if (e.expense_date.startsWith(key)) total += safeNum(e.amount)
         }
         for (const sp of salaryPayments) {

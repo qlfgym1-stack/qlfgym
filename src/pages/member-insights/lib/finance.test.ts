@@ -74,4 +74,61 @@ describe("analyzeFinance", () => {
     const stats = analyzeFinance([payment({ payment_method: "" })], [])
     expect(stats.paymentMethods[0]?.method).toBe("other")
   })
+
+  it("excludes subscription POS transactions already counted as payments", () => {
+    const stats = analyzeFinance(
+      [payment({ id: "p1", member_id: "m1", amount: 1000, payment_date: "2026-08-02T10:00:00Z" })],
+      [
+        pos({ id: "tx1", member_id: "m1", total: 1000, created_at: "2026-08-02T10:00:00Z", items: [
+          { id: "__subscription__basic", name: "Abonnement", price: 1000, quantity: 1 },
+        ] }),
+        pos({ id: "tx2", member_id: "m1", total: 2500, created_at: "2026-08-03T10:00:00Z", items: [
+          { id: "a", name: "Whey", price: 2500, quantity: 1 },
+        ] }),
+      ]
+    )
+    expect(stats.totalPosRevenue).toBe(2500)
+    expect(stats.totalRevenue).toBe(3500)
+    expect(stats.topProducts).toHaveLength(1)
+    expect(stats.topProducts[0]?.id).toBe("a")
+  })
+
+  it("keeps standalone subscription POS without matching payment but excludes its virtual item", () => {
+    const stats = analyzeFinance(
+      [],
+      [
+        pos({ id: "tx1", member_id: "m1", total: 1000, created_at: "2026-08-02T10:00:00Z", items: [
+          { id: "__renewal__basic", name: "Renouvellement", price: 1000, quantity: 1 },
+        ] }),
+      ]
+    )
+    expect(stats.totalPosRevenue).toBe(1000)
+    expect(stats.topProducts).toHaveLength(0)
+  })
+
+  it("dedupes renewal POS matching a completed payment but not a cancelled one", () => {
+    const stats = analyzeFinance(
+      [payment({ id: "p1", member_id: "m1", amount: 1000, payment_date: "2026-08-02T10:00:00Z" })],
+      [
+        pos({ id: "tx1", member_id: "m1", total: 1000, created_at: "2026-08-02T10:00:00Z", items: [
+          { id: "__renewal__basic", name: "Renouvellement", price: 1000, quantity: 1 },
+        ] }),
+      ]
+    )
+    expect(stats.totalPosRevenue).toBe(0)
+    expect(stats.totalRevenue).toBe(1000)
+  })
+
+  it("keeps renewal POS when its only matching payment is cancelled", () => {
+    const stats = analyzeFinance(
+      [payment({ id: "p1", member_id: "m1", amount: 1000, payment_date: "2026-08-02T10:00:00Z", status: "cancelled" })],
+      [
+        pos({ id: "tx1", member_id: "m1", total: 1000, created_at: "2026-08-02T10:00:00Z", items: [
+          { id: "__renewal__basic", name: "Renouvellement", price: 1000, quantity: 1 },
+        ] }),
+      ]
+    )
+    expect(stats.totalPosRevenue).toBe(1000)
+    expect(stats.totalRevenue).toBe(1000)
+  })
 })

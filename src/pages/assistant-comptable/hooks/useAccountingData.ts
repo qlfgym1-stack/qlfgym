@@ -438,7 +438,7 @@ export function useAccountingData(
       label: "Abonnement",
       debit: safeNum(p.amount),
       credit: 0,
-      account: "511 - Caisse",
+      account: p.payment_method === "card" ? "512 - Banque" : "511 - Caisse",
     }))
   }, [paymentsRaw])
 
@@ -485,8 +485,14 @@ export function useAccountingData(
   }, [subscriptionRevenue, posRevenue, totalExpenses, totalRevenue, profit, expensesByCategory])
 
   const vatSummary: VatEntry[] = useMemo(() => {
-    const collected = posRevenue * 0.19
-    const deductible = totalExpenses * 0.19
+    // TVA collectée : appliquée à toutes les ventes (abonnements + POS)
+    const collected = totalRevenue * 0.19
+    // TVA déductible : uniquement sur les achats assujettis (hors salaires et
+    // impôts/taxes qui ne portent pas de TVA)
+    const NON_DEDUCTIBLE = new Set(["salaries", "taxes"])
+    const deductible = expensesRaw
+      .filter((e: ExpenseRow) => !NON_DEDUCTIBLE.has(e.category))
+      .reduce((s: number, e: ExpenseRow) => s + safeNum(e.amount) * 0.19, 0)
     return [
       {
         period: filters.period === "custom" ? `${filters.dateFrom} — ${filters.dateTo}` : filters.period,
@@ -495,7 +501,7 @@ export function useAccountingData(
         net: collected - deductible,
       },
     ]
-  }, [posRevenue, totalExpenses, filters])
+  }, [totalRevenue, expensesRaw, filters])
 
   const alerts: Alert[] = useMemo(() => {
     const result: Alert[] = []

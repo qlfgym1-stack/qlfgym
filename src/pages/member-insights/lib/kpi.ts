@@ -1,4 +1,5 @@
 import type { MemberRow, PaymentRow, SubscriptionRow, AttendanceRow, PosTransactionRow } from "./raw"
+import { buildSubscriptionKeys, isDuplicateSubscriptionPos, isVirtualSubscriptionItem } from "@/lib/ledger-dedupe"
 
 export interface MemberKpi {
   memberId: string
@@ -76,13 +77,20 @@ export function computeMemberKpis(
   }
 
   const posByMember = new Map<string, { count: number; total: number; products: Map<string, { name: string; quantity: number; revenue: number }> }>()
+  const subscriptionKeys = buildSubscriptionKeys(
+    payments.filter((p) => p.status === "completed").map((p) => ({ memberId: p.member_id, amount: p.amount, date: p.payment_date }))
+  )
   for (const tx of pos) {
+    if (isDuplicateSubscriptionPos(
+      { memberId: tx.member_id, amount: tx.total, date: tx.created_at, items: tx.items },
+      subscriptionKeys
+    )) continue
     if (!tx.member_id) continue
     const cur = posByMember.get(tx.member_id) ?? { count: 0, total: 0, products: new Map() }
     cur.count += 1
     cur.total += safeNum(tx.total)
     for (const it of tx.items ?? []) {
-      if (!it?.id) continue
+      if (!it?.id || isVirtualSubscriptionItem(it)) continue
       const p = cur.products.get(it.id) ?? { name: it.name ?? "", quantity: 0, revenue: 0 }
       p.quantity += safeNum(it.quantity)
       p.revenue += safeNum(it.price) * safeNum(it.quantity)

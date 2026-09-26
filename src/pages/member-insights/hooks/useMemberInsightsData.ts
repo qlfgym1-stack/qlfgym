@@ -239,6 +239,7 @@ export function useMemberInsightsData(): MemberInsightsData {
         .from("pos_transactions")
         .select("id, member_id, total, created_at, items")
         .eq("organization_id", orgId!)
+        .eq("payment_status", "completed")
       if (error) throw error
       return (data ?? []).map((r: {
         id: string

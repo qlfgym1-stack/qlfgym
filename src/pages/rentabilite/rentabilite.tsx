@@ -35,6 +35,19 @@ export default function RentabilitePage() {
   const [dateFrom, setDateFrom] = useState(() => format(subMonths(today, 12), "yyyy-MM-dd"))
   const [dateTo, setDateTo] = useState(() => format(today, "yyyy-MM-dd"))
 
+  const applyPeriod = (p: ProfitabilityFilters["period"]) => {
+    setPeriod(p)
+    if (p === "monthly") {
+      const d = new Date()
+      setDateFrom(format(new Date(d.getFullYear(), d.getMonth(), 1), "yyyy-MM-dd"))
+      setDateTo(format(d, "yyyy-MM-dd"))
+    } else if (p === "yearly") {
+      const d = new Date()
+      setDateFrom(`${d.getFullYear()}-01-01`)
+      setDateTo(format(d, "yyyy-MM-dd"))
+    }
+  }
+
   const filters: ProfitabilityFilters = useMemo(
     () => ({ period, dateFrom, dateTo }),
     [period, dateFrom, dateTo]
@@ -75,7 +88,7 @@ export default function RentabilitePage() {
             key={p}
             variant={period === p ? "selected" : "outline"}
             size="sm"
-            onClick={() => setPeriod(p)}
+            onClick={() => applyPeriod(p)}
           >
             {t(`rentabilite.${p}`)}
           </Button>

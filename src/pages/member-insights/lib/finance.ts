@@ -1,4 +1,5 @@
 import type { PaymentRow, PosTransactionRow } from "./raw"
+import { buildSubscriptionKeys, isDuplicateSubscriptionPos, isVirtualSubscriptionItem } from "@/lib/ledger-dedupe"
 
 export interface TopProduct {
   id: string
@@ -29,12 +30,19 @@ function safeNum(v: unknown): number {
 
 export function analyzeFinance(payments: PaymentRow[], pos: PosTransactionRow[]): FinanceStats {
   const products = new Map<string, TopProduct>()
+  const subscriptionKeys = buildSubscriptionKeys(
+    payments.filter((p) => p.status === "completed").map((p) => ({ memberId: p.member_id, amount: p.amount, date: p.payment_date }))
+  )
   let totalPosRevenue = 0
 
   for (const tx of pos) {
+    if (isDuplicateSubscriptionPos(
+      { memberId: tx.member_id, amount: tx.total, date: tx.created_at, items: tx.items },
+      subscriptionKeys
+    )) continue
     totalPosRevenue += safeNum(tx.total)
     for (const it of tx.items ?? []) {
-      if (!it?.id) continue
+      if (!it?.id || isVirtualSubscriptionItem(it)) continue
       const cur = products.get(it.id) ?? { id: it.id, name: it.name ?? "", quantity: 0, revenue: 0 }
       cur.quantity += safeNum(it.quantity)
       cur.revenue += safeNum(it.price) * safeNum(it.quantity)
