@@ -3,6 +3,7 @@ import { useQuery } from "@/hooks/useQuery"
 import { useSupabase } from "@/hooks/useSupabase"
 import { useAuth } from "@/stores/auth"
 import { IS_MOCK } from "@/lib/config"
+import { fetchAllPages, EXACT_COUNT } from "@/lib/supabase-paging"
 import type { MemberRow, PaymentRow, SubscriptionRow, AttendanceRow, PosTransactionRow, StaffRow } from "../lib/raw"
 import { computeMemberKpis, aggregateKpis, analyzeSubscriptionTypes, analyzeAttendance, activitySegment } from "../lib/kpi"
 import { churnRiskBatch, churnDistribution } from "../lib/churn"
@@ -138,12 +139,27 @@ export function useMemberInsightsData(): MemberInsightsData {
   const { data: membersData, error: membersError } = useQuery({
     queryKey: ["member-insights", "members", orgId],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("members")
-        .select("id, first_name, last_name, full_name, status, last_visit, created_at, coach_id, corporate_id")
-        .eq("organization_id", orgId!)
-      if (error) throw error
-      return (data ?? []) as unknown as MemberRow[]
+      // Paginé : la prod plafonne à 1000 lignes/réponse (members = 1127 en base)
+      // et la troncature silencieuse sous-comptait les KPIs.
+      const rows = await fetchAllPages<{
+        id: string
+        first_name: string
+        last_name: string
+        full_name?: string | null
+        status: string
+        last_visit: string | null
+        created_at: string
+        coach_id: string | null
+        corporate_id: string | null
+      }>(
+        (from, to) =>
+          db
+            .from("members")
+            .select("id, first_name, last_name, full_name, status, last_visit, created_at, coach_id, corporate_id", EXACT_COUNT)
+            .eq("organization_id", orgId!)
+            .range(from, to),
+      )
+      return rows as unknown as MemberRow[]
     },
     enabled: !!orgId && !isMock,
   })
@@ -151,12 +167,8 @@ export function useMemberInsightsData(): MemberInsightsData {
   const { data: subsData, error: subsError } = useQuery({
     queryKey: ["member-insights", "subscriptions", orgId],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("member_subscriptions")
-        .select("id, member_id, subscription_type_id, start_date, end_date, total_amount, amount_paid, status, subscription_types(name, duration_days, price)")
-        .eq("organization_id", orgId!)
-      if (error) throw error
-      return (data ?? []).map((r: {
+      // Paginé : member_subscriptions = 1834 lignes pour le plus gros org.
+      const rows = await fetchAllPages<{
         id: string
         member_id: string
         subscription_type_id: string
@@ -166,7 +178,15 @@ export function useMemberInsightsData(): MemberInsightsData {
         amount_paid: number
         status: string
         subscription_types: { name: string; duration_days: number; price: number } | null
-      }) => ({
+      }>(
+        (from, to) =>
+          db
+            .from("member_subscriptions")
+            .select("id, member_id, subscription_type_id, start_date, end_date, total_amount, amount_paid, status, subscription_types(name, duration_days, price)", EXACT_COUNT)
+            .eq("organization_id", orgId!)
+            .range(from, to),
+      )
+      return rows.map((r) => ({
         id: r.id,
         member_id: r.member_id,
         subscription_type_id: r.subscription_type_id,
@@ -186,14 +206,8 @@ export function useMemberInsightsData(): MemberInsightsData {
   const { data: paymentsData, error: paymentsError } = useQuery({
     queryKey: ["member-insights", "payments", orgId],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("payments")
-        .select("id, member_id, subscription_id, amount, payment_method, payment_date, status")
-        .eq("organization_id", orgId!)
-        .eq("status", "completed")
-        .is("cancelled_at", null)
-      if (error) throw error
-      return (data ?? []).map((r: {
+      // Paginé : payments = 1536 lignes → le CA et le LTV étaient sous-estimés.
+      const rows = await fetchAllPages<{
         id: string
         member_id: string
         subscription_id: string | null
@@ -201,7 +215,17 @@ export function useMemberInsightsData(): MemberInsightsData {
         payment_method: string
         payment_date: string
         status: string
-      }) => ({
+      }>(
+        (from, to) =>
+          db
+            .from("payments")
+            .select("id, member_id, subscription_id, amount, payment_method, payment_date, status", EXACT_COUNT)
+            .eq("organization_id", orgId!)
+            .eq("status", "completed")
+            .is("cancelled_at", null)
+            .range(from, to),
+      )
+      return rows.map((r) => ({
         id: r.id,
         member_id: r.member_id,
         subscription_id: r.subscription_id,
@@ -217,14 +241,24 @@ export function useMemberInsightsData(): MemberInsightsData {
   const { data: attendanceData, error: attendanceError } = useQuery({
     queryKey: ["member-insights", "attendance", orgId],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("attendance")
-        .select("member_id, check_in, check_out, type")
-        .eq("organization_id", orgId!)
-      if (error) throw error
-      return (data ?? [])
-        .filter((r: { check_in: string | null }) => r.check_in !== null)
-        .map((r: { member_id: string; check_in: string | null; check_out: string | null; type: "check-in" | "class" }) => ({
+      // Paginé : attendance = 7887 lignes pour le plus gros org, le plus gros
+      // poste tronqué (matrice comportementale et fréquentation faussées).
+      const rows = await fetchAllPages<{
+        member_id: string
+        check_in: string | null
+        check_out: string | null
+        type: "check-in" | "class"
+      }>(
+        (from, to) =>
+          db
+            .from("attendance")
+            .select("member_id, check_in, check_out, type", EXACT_COUNT)
+            .eq("organization_id", orgId!)
+            .range(from, to),
+      )
+      return rows
+        .filter((r) => r.check_in !== null)
+        .map((r) => ({
           member_id: r.member_id,
           check_in: r.check_in as string,
           check_out: r.check_out,
@@ -237,19 +271,24 @@ export function useMemberInsightsData(): MemberInsightsData {
   const { data: posData, error: posError } = useQuery({
     queryKey: ["member-insights", "pos", orgId],
     queryFn: async () => {
-      const { data, error } = await db
-        .from("pos_transactions")
-        .select("id, member_id, total, created_at, items")
-        .eq("organization_id", orgId!)
-        .eq("payment_status", "completed")
-      if (error) throw error
-      return (data ?? []).map((r: {
+      // Paginé : pos_transactions = 826 lignes aujourd'hui, mais la table croît
+      // avec l'activité et franchirait le plafond d'ici peu.
+      const rows = await fetchAllPages<{
         id: string
         member_id: string | null
         total: number
         created_at: string
         items: unknown
-      }) => ({
+      }>(
+        (from, to) =>
+          db
+            .from("pos_transactions")
+            .select("id, member_id, total, created_at, items", EXACT_COUNT)
+            .eq("organization_id", orgId!)
+            .eq("payment_status", "completed")
+            .range(from, to),
+      )
+      return rows.map((r) => ({
         id: r.id,
         member_id: r.member_id,
         total: safeNum(r.total),

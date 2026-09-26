@@ -18,6 +18,7 @@ import type {
 } from "./types"
 import type { Database } from "@/types/supabase"
 import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
+import { fetchAllPages, EXACT_COUNT } from "@/lib/supabase-paging"
 
 type PaymentRow = Database["public"]["Tables"]["payments"]["Row"] & {
   members: { first_name: string; last_name: string } | null
@@ -339,28 +340,39 @@ export function useAccountingData(
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
       const fromISO = sixMonthsAgo.toISOString()
       const fromDay = sixMonthsAgo.toISOString().slice(0, 10)
-      const [payRes, posRes, expRes] = await Promise.all([
-        supabase
-          .from("payments")
-          .select("amount, payment_date, member_id")
-          .eq("organization_id", orgId)
-          .eq("status", "completed")
-          .gte("payment_date", fromDay),
-        supabase
-          .from("pos_transactions")
-          .select("total, created_at, member_id, items")
-          .eq("organization_id", orgId)
-          .eq("payment_status", "completed")
-          .gte("created_at", fromISO),
-        supabase
-          .from("expenses")
-          .select("amount, expense_date")
-          .eq("organization_id", orgId)
-          .gte("expense_date", fromDay),
+      const [pays, poss, exps] = await Promise.all([
+        // Paginé : la fenêtre 6 mois dépasse le plafond prod de 1000 lignes et
+        // l'historique du grand livre était amputé en silence.
+        fetchAllPages<{ amount: number; payment_date: string; member_id: string | null }>(
+          (from, to) =>
+            supabase
+              .from("payments")
+              .select("amount, payment_date, member_id", EXACT_COUNT)
+              .eq("organization_id", orgId)
+              .eq("status", "completed")
+              .gte("payment_date", fromDay)
+              .range(from, to),
+        ),
+        fetchAllPages<{ total: number; created_at: string; member_id: string | null; items: unknown }>(
+          (from, to) =>
+            supabase
+              .from("pos_transactions")
+              .select("total, created_at, member_id, items", EXACT_COUNT)
+              .eq("organization_id", orgId)
+              .eq("payment_status", "completed")
+              .gte("created_at", fromISO)
+              .range(from, to),
+        ),
+        fetchAllPages<{ amount: number; expense_date: string }>(
+          (from, to) =>
+            supabase
+              .from("expenses")
+              .select("amount, expense_date", EXACT_COUNT)
+              .eq("organization_id", orgId)
+              .gte("expense_date", fromDay)
+              .range(from, to),
+        ),
       ])
-      const pays = (payRes.data ?? []) as { amount: number; payment_date: string; member_id: string | null }[]
-      const poss = (posRes.data ?? []) as { total: number; created_at: string; member_id: string | null; items: unknown }[]
-      const exps = (expRes.data ?? []) as { amount: number; expense_date: string }[]
       const histKeys = buildSubscriptionKeys(pays.map((r) => ({
         memberId: r.member_id ?? null,
         amount: safeNum(r.amount),
@@ -533,15 +545,17 @@ export function useAccountingData(
     queryFn: async () => {
       if (!orgId) return []
       const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      const { data } = await supabase
-        .from("payments")
-        .select("amount, payment_date")
-        .eq("organization_id", orgId)
-        .eq("status", "completed")
-        .gte("payment_date", mStart.toISOString())
-      return ((data ?? []) as { amount: number; payment_date: string }[]).map(
-        (r) => ({ amount: r.amount, day: r.payment_date.slice(0, 10) }),
+      const rows = await fetchAllPages<{ amount: number; payment_date: string }>(
+        (from, to) =>
+          supabase
+            .from("payments")
+            .select("amount, payment_date", EXACT_COUNT)
+            .eq("organization_id", orgId)
+            .eq("status", "completed")
+            .gte("payment_date", mStart.toISOString())
+            .range(from, to),
       )
+      return rows.map((r) => ({ amount: r.amount, day: r.payment_date.slice(0, 10) }))
     },
     enabled: !!orgId,
   })
@@ -551,15 +565,17 @@ export function useAccountingData(
     queryFn: async () => {
       if (!orgId) return []
       const mStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-      const { data } = await supabase
-        .from("pos_transactions")
-        .select("total, created_at, member_id, items")
-        .eq("organization_id", orgId)
-        .eq("payment_status", "completed")
-        .gte("created_at", mStart.toISOString())
-      return ((data ?? []) as { total: number; created_at: string; member_id: string | null; items: unknown }[]).map(
-        (r) => ({ total: r.total, day: r.created_at.slice(0, 10), member_id: r.member_id, items: r.items }),
+      const rows = await fetchAllPages<{ total: number; created_at: string; member_id: string | null; items: unknown }>(
+        (from, to) =>
+          supabase
+            .from("pos_transactions")
+            .select("total, created_at, member_id, items", EXACT_COUNT)
+            .eq("organization_id", orgId)
+            .eq("payment_status", "completed")
+            .gte("created_at", mStart.toISOString())
+            .range(from, to),
       )
+      return rows.map((r) => ({ total: r.total, day: r.created_at.slice(0, 10), member_id: r.member_id, items: r.items }))
     },
     enabled: !!orgId,
   })
