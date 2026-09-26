@@ -86,11 +86,11 @@
 - **Bug S-H3** — `recovery.tsx:131` lit désormais `data.newCode` (l'EF `reset` renvoie `newCode`, pas `newRecoveryCode`) → nouveau code affiché correctement
 - **Bug F-7** — `members.tsx` lit `?q=` via `useSearchParams` → recherche navbar fonctionnelle (init `search`/`debouncedSearch` depuis l'URL)
 - **Bug F-6** — `navbar.tsx` importe `useQuery`/`useMutation`/`useQueryClient` depuis `@/hooks/useQuery`
-- **Déploiement Vercel** — ErrorBoundary auto-reload sur chunk dynamique périmé (stale PWA) + `cleanupOutdatedCaches` ; déploiement prod https://qlfgym.vercel.app ✅
+- **Déploiement Vercel** — ErrorBoundary auto-reload sur chunk dynamique périmé (stale PWA) + `cleanupOutdatedCaches` ; déploiement prod https://qlf-gym.vercel.app ✅
 - **Recherche adhérent + WhatsApp** — page notifications : barre de recherche par nom/téléphone (flux général, renouvellements, expirés), bouton WhatsApp dans chaque carte de notification ; page membres : bouton WhatsApp (template renouvellement pré-rempli) à côté de chaque membre
 - **Cloche navbar** — popover notifications agrandi (`w-96`, `max-h-96`, 8 notifications affichées)
 - **B1 PNGs** — `QLG_3D-removebg-preview.png` redimensionné 707×353/181.6KB → 384×192/67.9KB (`-opt.png`, origine supprimée), sign-in branché ; dist 4523→4410 KiB
-- **Déploiement Vercel 13/08/2026** — branche `deploy/member-insights` déployée en prod (member-insights, noImplicitAny C1, dialogue notif, store IA partagé) → https://qlfgym.vercel.app ✅
+- **Déploiement Vercel 13/08/2026** — branche `deploy/member-insights` déployée en prod (member-insights, noImplicitAny C1, dialogue notif, store IA partagé) → https://qlf-gym.vercel.app ✅
 - **Paie — Bonus exceptionnel** : champ BONUS « prime exceptionnelle » par employé dans `rh.tsx` (colonne `staff.bonus` existante via 00051) — éditable admin, sauvegardé avec salaire (autosave), badge bonus dans la liste staff, ligne « Total salaire » = fixe + bonus
 - **Assistant IA — Bonus intégré** : `useAssistantData.ts` somme les `staff.bonus` actifs et les ajoute aux dépenses salariales (`totalExpenses`) → impacte le bénéfice net, KPI et synthèse
 - **Fix UI — Synthèse intelligente** : `insights-section.tsx` textes passés en `text-foreground` (noir) au lieu de `text-*-foreground` blancs sur fonds teintés 10% (illisibles) ; action `opacity-80` → noir plein
@@ -103,9 +103,32 @@
 
 ### In Progress
 - Intégration des anomalies de l'audit (reste : sign-in i18n F-4 intentionnel) — F-4 assumé, G2 terminé
+- **Dédup POS ↔ paiements : correctif structurel à faire, hors périmètre d'un patch** — voir entrée 26/09/2026
 
 ### Blocked
 - **(none)**
+
+## Latest (26/09/2026) — déploiement prod + nettoyage doublons POS + dedup
+- **Déploiement Vercel effectué** (autorisation utilisateur) : branche `deploy/member-insights` commit `72098b8` → **`https://qlf-gym.vercel.app`**. Vérifié : sw.js à **13 entrées** de precache (l'ancien build en avait 130), CSS hash identique au build local. Les correctifs C-1→C-13 sont donc en ligne.
+  - ⚠️ **L'URL de prod est `qlf-gym.vercel.app`** (avec hyphen). `qlfgym.vercel.app` (sans hyphen) est un domaine PÉRIMÉ de l'ancien compte `moussa11` qui répond 200 mais sert un build obsolète. Cette erreur a fait perdre du temps : toujours vérifier via `qlf-gym` + le nombre d'entrées de precache, pas seulement le HTTP 200.
+- **Correctifs de sécurité confirmés actifs en base** : `record_pos_checkout` n'a plus qu'**une** signature (9 args), garde `AND organization_id = p_organization_id` présente dans `prosrc`, `auto_close_all_stale_attendances` présente, 5 crons actifs dont 3 sur `vault.decrypted_secrets`. La fuite inter-org sur le stock POS et les 3 crons cassés sont donc corrigés.
+- **Migration `00133_cancel_duplicate_pos_transactions.sql` (appliquée, commit `34d12d4`)** — 8 transactions POS dupliquées annulées (membre `58e3f840` Safer Abdellah, 8 × 2 000 DA en 17 s le 21/09 entre 17:43:35 et 17:43:53, toutes référençant la **même** subscription `b70a4398` pour **un seul** paiement). `payment_status` → `cancelled` (idempotent) + trace `payment_changes` (`source='pos'`, `action='cancel'`) visible dans l'historique `/encaissement`. Paniers 100 % virtuels → **aucun impact stock**. La 1ʳᵉ transaction (`f192f85e`, 17:42:53) est conservée car c'est celle appariée au paiement réel.
+  - **Effet sur `/encaissement`** : semaine 195 700 → **179 700**, mois 606 140 → **590 140** (jour inchangé à 19 450).
+- **Audit du dedup POS ↔ paiements (`src/lib/ledger-dedupe.ts`) — BOGUE CONFIRMÉ, CORRECTIF NON LIVRÉ**
+  - La clé d'appariement est `membre|montant|minute` (`paymentDedupeKey`). Le POS et le paiement sont déclenchés à quelques secondes d'intervalle par `finalize_subscription_payment`, donc **un simple passage de frontière de minute les désapparie** → vente comptée 2 fois. Écarts relevés en prod : 0 s, 1 s, 29 s, 61 s, 187 s.
+  - Le dedup est consommé par **6 modules** : `dashboard.tsx`, `useAccountingData.ts` (4 sites), `useProfitabilityData.ts`, `member-insights/lib/kpi.ts`, `member-insights/lib/finance.ts`, `encaissement.tsx` → tous les CA de l'app sont concernés.
+  - **Deux approches testées et rejetées** (ne pas les re-tenter) :
+    1. **Fenêtre de tolérance (±2 min) — DANGEREUSE.** Vérification par identité d'abonnement : sur 5 cas restants, seuls 2 (écarts 0 s et 1 s) sont de **vrais doublons** (même subscription). Les 3 autres sont des **ventes légitimes distinctes** (29 s, 61 s, 187 s) avec des `subscription_id` **différents**. Une fenêtre de 2 min aurait **effacé 4 000 DA de CA réel** à chaque double achat dans la même minute. Rejeté.
+    2. **Clé par identité d'abonnement** (`__subscription__<uuid>` dans `items` vs `payments.subscription_id`) — fonctionne pour `__subscription__` mais **pas pour `__renewal__`** : `pos.tsx:418` encode l'**ancien** `subscription_id` alors que le paiement porte le **nouveau** (vérifié sur 6 renouvellements, 0 correspondance). Rejeté en l'état.
+  - **Correctif à faire, proprement** : matcher sur `payments.subscription_id` pour `__subscription__`, définir une stratégie séparée pour `__renewal__` (ex. faire encoder le nouveau `subscription_id` dans l'item par `pos.tsx`, ce qui ne retroactive pas l'historique), et **ajouter `subscription_id` aux `select` payments** de `dashboard.tsx`, `useAccountingData.ts` (4 requêtes), `useProfitabilityData.ts`, `encaissement.tsx` — aucun ne le sélectionne aujourd'hui.
+  - ** Sens de'erreur actuel = SÛR** : la clé à la minute ne produit que des **faux négatifs** (oublons non retirés → CA **sur**estimé), jamais de faux positifs. Elle ne peut pas supprimer une vente légitime. **Ne pas la remplacer par une heuristique temporelle sans tests.**
+  - **Surestimation résiduelle connue : 3 200 DA** sur septembre (doublons réels de 1 200 + 2 000 DA non appariés, écarts 0 s et 1 s).
+- **⚠️ NE JAMAIS annuler ces 3 transactions** (mêmes membre/montant, mais **abonnements différents** = ventes légitimes) : `676ac138` (05/09 14:45:23, abo `1463e049` vs paiement `33ea59f1`), `ca481ad6` (10/09 17:10:38, abo `19f82bfc` vs `b7bcab32`), `b0fc0a1c` (10/09 15:14:38, abo `e6de897e` vs `c32e5a4a`). Les annuler créerait de **vraies pertes de CA**.
+- **Journal d'audit — utilisateur `cece5e92-1a76-4568-aecd-6773091043c3` = `moussamohamedelmabrouk@gmail.com`** (dernière connexion 26/09 10:21). Volume cumulé : 3 965 UPDATE `members`, 1 130 UPDATE `member_subscriptions`, 550 INSERT + 37 DELETE + 21 UPDATE `payments`, 233 INSERT + 28 DELETE `members`, 55 `payment_changes` en `cancel`. Les 28 DELETE `members` / 41 DELETE `member_subscriptions` méritent un examen. `ip_address` est **vide** sur toutes les lignes → pas de forensics réseau possible.
+  - Les IDs `a9c361b1-bef…` et `c6091e1f-360…` sont des **`entity_id`**, pas des IDs de journal : `a9c361b1` = un `member_subscription` (INSERT puis UPDATE), `c6091e1f` = un **paiement de 2 000 DA cash completed**. Tous deux horodatés `2026-09-26 19:00:50.052477+00`.
+  - **Correction d'une hypothèse erronée** : ce timestamp ne porte que **5 lignes d'audit, 1 paiement, 1 abonnement** — ce n'est **pas** un import massif. Les 3 groupes d'un `GROUP BY` partageant ce `max(created_at)` avaient induit une conclusion hâtive.
+  - Le timestamp malformé `"…+00:00"` dans `new_data` n'est que le **snapshot JSON** de l'audit ; les colonnes sont de vrais `timestamptz`, les filtres de dates fonctionnent.
+- tsc ✅ / vitest ✅ 235/235 / build ✅ — l'arbre est revenu à l'état du commit `34d12d4` après abandon des correctifs dedup non sûrs.
 
 ## Latest (29/08/2026)
 - **Robot IA flottant (QLF premium, ÉTAPE 6)** — **robot statique premium 2.5D** (`ai-robot.tsx` ~532 lignes, SVG `viewBox 0 0 116 156`, monté dans `AppLayout`, CSS `.qlf-*` index.css ~lignes 256+) : **aucun déplacement/rotation/grandissement/entraînement** — aéronaute bleu nuit + bleu électrique (armure 6 stops `qlfArmor`/`qlfArmorDark`, chrome `qlfMetal`, reflets, jointures lumineuses cyan, aileron crête + antenne, pods latéraux, visière, sourcils/menton lueurs, logo QLF au cœur du torse `qlfCore`+halo, bottes à liseré) ; **micro-mouvements uniquement** : respiration très légère `.qlf-breathe` (scale 1.005), **yeux → souris** (`--eye-lx/ly`+`--eye-rx/ry`, convergence + inertie 0.14 + micro-saccades sin/cos, rAF) + **clignement occasionnel** `.qlf-blink` (3,2–7,2 s, 160 ms) ; **lueur statique élégante sous les pieds** : halo `qlfFire` + 2 éventails `.qlf-fan` + 4 particules `.qlf-spark` (opacité seulement, prog. sans déplacement) ; **clic robot = fenêtre IA flottante** (plus de nav `/ai-assistant`) réutilisant `ChatSection` (embedded) + `useAiChat` + `useAssistantData` — panel persistant à la navigation ; drag/tactile + localStorage `qlf-robot-pos` + clavier Entrée/Espace conservés ; classes obsolètes supprimées (`.is-idle/.is-observe/.is-training/.is-rest/.is-grow`, `--qlf-rot`, `--qlf-fire`, `.qlf-pupil-*`, `.qlf-fire-glare/blue/outer/core`, `.qlf-arm-l/r`) ; reduced-motion à jour — tsc ✅ zéro erreur, vitest ✅ 181/181, build ✅ (126 precache)
@@ -146,6 +169,9 @@
 - **Assistant IA** : moteur règles locales (aucune clé API, hors-ligne, testable), prévisions par régression linéaire + saisonnalité, insights/actions via clés i18n paramétrées `{param}` — cohérent avec rentabilite/assistant-comptable
 
 ## Next Steps
+- **Correctif structurel du dedup POS ↔ paiements** (voir entrée 26/09/2026) : matcher sur `subscription_id` pour `__subscription__`, traiter `__renewal__` séparément, ajouter `subscription_id` aux 5 requêtes `payments` qui ne le sélectionnent pas. Sans cela, ~3 200 DA de CA restent surestimés par mois. **Ne pas** produire de variante par fenêtre temporelle sans tests de non-régression sur les 3 ventes légitimes.
+- Test manuel navigateur (Ctrl+Shift+R) sur `https://qlf-gym.vercel.app` : `/display`, `/pos` (2 checkouts simultanés = 1 seule transaction), `/pointage` + `/notifications`, `/member-insights` (KPIs CA/LTV = 1127 adhérents), `/assistant-comptable`, `/encaissement` (jour 19 450 / semaine 179 700 / mois 590 140 après 00133)
+- ⚠️ `max_rows` prod toujours à 1000 (non pilotable en API/SQL) → dashboard Supabase → Settings → API. Non bloquant : `fetchAllPages` rend les chiffres corrects.
 - Test manuel navigateur (Ctrl+Shift+R) : `/ai-assistant` (KPIs, actions P0/P1/P2, graphique heures, produits phares, prévisions confiance, insights EN/AR/FR) + test corporate POS (adhérent avec carte → panier abonnement → remise auto/retirable → paiement RPC montant remisé) + recherche navbar (`/members?q=`) + `/member-insights` (KPIs, churn, segments, matrice, fréquentation)
 - ✅ Bug rentabilite corrigé : filtre `organization_id` sur `class_enrollments` (`useProfitabilityData.ts:260` via `classes!inner`) + clés i18n rentabilite FR/AR/EN complètes
 - ✅ Corriger les anomalies restantes (F-4 sign-in i18n intentionnel, G2 branches Git) — F-4 resté intentionnel ; G2 : workflow `pr.yml` poussé sur GitHub + protection `master` active + `develop` fast-forwardé
@@ -153,10 +179,11 @@
 - ✅ Remplacer `SUPABASE_PROJECT_REF` dans `00004_cron_jobs.sql` — fait par `00104_fix_cron_jobs_url.sql` déjà appliquée (crons 8h/9h actifs)
 
 ## Critical Context
+- **URL de production = `https://qlf-gym.vercel.app`** (avec hyphen, projet Vercel `fitmanager-pro-dz`, `prj_6EefbM92TX8kvgjLrBlVy2kBy4At`). ⚠️ **`https://qlfgym.vercel.app` (sans hyphen) est un domaine PÉRIMÉ** de l'ancien compte `moussa11` : il répond encore en HTTP 200 mais sert un **build obsolète** (sw.js à 130 entrées de precache au lieu de 13). Ne jamais l'utiliser pour vérifier un déploiement. Les 3 alias du projet sont `qlf-gym.vercel.app`, `fitmanager-pro-dz-eight.vercel.app` et `fitmanager-pro-dz-qlfgym20-engs-projects.vercel.app` — tous les 3 sont déjà dans `allowedOrigins` des 8 Edge Functions, donc pas de risque CORS.
 - `npx tsc --noEmit` ✅ zéro erreur (`noImplicitAny: true`)
-- `npx vitest --run` ✅ 181/181 tests (utils, recovery, auth, ai-assistant lib, member-insights lib, pointage)
-- `npx vite build` ✅ succès
-- Migrations `00001`→`00109` — toutes appliquées remote (dont 00109 fluidité, 00100 sécurité RPC, 00061/00062 sécurité, 00060 corporate, 00059 admin)
+- `npx vitest --run` ✅ 235/235 tests (utils, recovery, auth, ai-assistant lib, member-insights lib, pointage, supabase-paging, ledger-dedupe)
+- `npx vite build` ✅ succès (precache 13 entrées)
+- Migrations `00001`→`00133` — toutes appliquées remote (dont 00133 annulation doublons POS, 00130 crons vault, 00132 garde `organization_id` sur le stock POS, 00129 consolidation RPCs, 00109 fluidité, 00061/00062 sécurité, 00060 corporate, 00059 admin)
 - 8 Edge Functions déployées : ai-chat, recovery, sign-in-with-recovery, send-subscription-reminder, send-payment-reminder, create-notification, send-staff-invitation, admin-manage-users — `ai-chat` requiert le secret `OPENROUTER_API_KEY` (défini)
 - Le bucket `photos` Supabase Storage doit exister pour l'upload des avatars
 - RLS role-based : `admin` peut tout modifier, `coach`/`staff` sont en lecture seule
