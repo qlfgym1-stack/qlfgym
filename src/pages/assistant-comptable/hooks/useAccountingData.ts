@@ -17,7 +17,7 @@ import type {
   AiAnalysis,
 } from "./types"
 import type { Database } from "@/types/supabase"
-import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
+import { buildSubscriptionIndex, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
 import { fetchAllPages, EXACT_COUNT } from "@/lib/supabase-paging"
 
 type PaymentRow = Database["public"]["Tables"]["payments"]["Row"] & {
@@ -106,7 +106,7 @@ export function useAccountingData(
       if (!orgId) return []
       const { data } = await supabase
         .from("payments")
-        .select("id, amount, payment_date, payment_method, member_id, status, members(first_name, last_name)")
+        .select("id, amount, payment_date, payment_method, member_id, subscription_id, status, members(first_name, last_name)")
         .eq("organization_id", orgId)
         .eq("status", "completed")
         .gte("payment_date", from)
@@ -154,9 +154,9 @@ export function useAccountingData(
       const prevFrom = new Date(new Date(from).getTime() - 30 * 86400000).toISOString()
       const { data } = await supabase
         .from("payments")
-        .select("amount, payment_date, member_id")
-        .eq("organization_id", orgId)
-        .eq("status", "completed")
+      .select("amount, payment_date, member_id, subscription_id")
+      .eq("organization_id", orgId)
+      .eq("status", "completed")
         .gte("payment_date", prevFrom)
         .lt("payment_date", from)
       return (data ?? []) as { amount: number; payment_date: string; member_id: string | null }[]
@@ -185,11 +185,12 @@ export function useAccountingData(
 
   // Dédoublonnage : les abonnements/renouvellements réglés au POS sont déjà
   // enregistrés dans `payments` — on retire les ventes POS virtuelles doublons.
-  const ledgerKeys = useMemo(
-    () => buildSubscriptionKeys((paymentsRaw ?? []).map((p: PaymentRow) => ({
+  const ledgerIndex = useMemo(
+    () => buildSubscriptionIndex((paymentsRaw ?? []).map((p: PaymentRow) => ({
       memberId: p.member_id ?? null,
       amount: safeNum(p.amount),
       date: p.payment_date,
+      subscriptionId: p.subscription_id ?? null,
     }))),
     [paymentsRaw]
   )
@@ -200,9 +201,9 @@ export function useAccountingData(
         amount: safeNum(t.total),
         date: t.created_at,
         items: t.items,
-      }, ledgerKeys)
+      }, ledgerIndex)
     ),
-    [posRaw, ledgerKeys]
+    [posRaw, ledgerIndex]
   )
 
   const subscriptionRevenue = useMemo(
@@ -228,11 +229,12 @@ export function useAccountingData(
 
   const prevMonthRevenue = useMemo(
     () => {
-      const keys = buildSubscriptionKeys(
-        (lastMonthPayments as { amount: number; payment_date: string; member_id: string | null }[]).map((p) => ({
+      const index = buildSubscriptionIndex(
+        (lastMonthPayments as { amount: number; payment_date: string; member_id: string | null; subscription_id: string | null }[]).map((p) => ({
           memberId: p.member_id ?? null,
           amount: safeNum(p.amount),
           date: p.payment_date,
+          subscriptionId: p.subscription_id ?? null,
         }))
       )
       const posSum = (lastMonthPos as { total: number; created_at: string; member_id: string | null; items: unknown }[])
@@ -241,7 +243,7 @@ export function useAccountingData(
           amount: safeNum(t.total),
           date: t.created_at,
           items: t.items,
-        }, keys))
+        }, index))
         .reduce((s: number, t) => s + safeNum(t.total), 0)
       return (lastMonthPayments as { amount: number }[]).reduce((s: number, p: { amount: number }) => s + safeNum(p.amount), 0) + posSum
     },
@@ -343,11 +345,11 @@ export function useAccountingData(
       const [pays, poss, exps] = await Promise.all([
         // Paginé : la fenêtre 6 mois dépasse le plafond prod de 1000 lignes et
         // l'historique du grand livre était amputé en silence.
-        fetchAllPages<{ amount: number; payment_date: string; member_id: string | null }>(
+        fetchAllPages<{ amount: number; payment_date: string; member_id: string | null; subscription_id: string | null }>(
           (from, to) =>
             supabase
               .from("payments")
-              .select("amount, payment_date, member_id", EXACT_COUNT)
+              .select("amount, payment_date, member_id, subscription_id", EXACT_COUNT)
               .eq("organization_id", orgId)
               .eq("status", "completed")
               .gte("payment_date", fromDay)
@@ -373,17 +375,18 @@ export function useAccountingData(
               .range(from, to),
         ),
       ])
-      const histKeys = buildSubscriptionKeys(pays.map((r) => ({
+      const histIndex = buildSubscriptionIndex(pays.map((r) => ({
         memberId: r.member_id ?? null,
         amount: safeNum(r.amount),
         date: r.payment_date,
+        subscriptionId: r.subscription_id ?? null,
       })))
       const filteredPoss = poss.filter((r) => !isDuplicateSubscriptionPos({
         memberId: r.member_id ?? null,
         amount: safeNum(r.total),
         date: r.created_at,
         items: r.items,
-      }, histKeys))
+      }, histIndex))
       const result: MonthlyEntry[] = []
       for (let i = 5; i >= 0; i--) {
         const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -549,7 +552,7 @@ export function useAccountingData(
         (from, to) =>
           supabase
             .from("payments")
-            .select("amount, payment_date", EXACT_COUNT)
+            .select("amount, payment_date, subscription_id", EXACT_COUNT)
             .eq("organization_id", orgId)
             .eq("status", "completed")
             .gte("payment_date", mStart.toISOString())
@@ -581,10 +584,13 @@ export function useAccountingData(
   })
 
   const summaryPosFiltered = useMemo(() => {
-    const keys = buildSubscriptionKeys((summaryPayments as { amount: number; payment_date: string }[]).map((p) => ({
+    // `summaryPayments` ne sélectionne pas member_id : l'appariement ne peut donc
+    // reposer que sur subscription_id (clé minute indisponible ici).
+    const index = buildSubscriptionIndex((summaryPayments as { amount: number; payment_date: string; subscription_id: string | null }[]).map((p) => ({
       memberId: null,
       amount: safeNum(p.amount),
       date: p.payment_date,
+      subscriptionId: p.subscription_id ?? null,
     })))
     return (summaryPos as { total: number; day: string; member_id: string | null; items: unknown }[]).filter(
       (t) => !isDuplicateSubscriptionPos({
@@ -592,7 +598,7 @@ export function useAccountingData(
         amount: safeNum(t.total),
         date: t.day,
         items: t.items,
-      }, keys),
+      }, index),
     )
   }, [summaryPos, summaryPayments])
 

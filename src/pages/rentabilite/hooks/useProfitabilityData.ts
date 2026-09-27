@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { useQuery } from "@/hooks/useQuery"
 import { useSupabase } from "@/hooks/useSupabase"
 import type { InvestmentCategory, ProfitabilityData, ProfitabilityFilters, ProfitabilityItem } from "./types"
-import { buildSubscriptionKeys, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
+import { buildSubscriptionIndex, isDuplicateSubscriptionPos } from "@/lib/ledger-dedupe"
 
 function safeNum(v: unknown): number {
   const n = Number(v)
@@ -36,6 +36,7 @@ type RawPayment = {
   payment_date: string
   payment_method: string
   member_id: string | null
+  subscription_id: string | null
   members: { first_name: string; last_name: string } | null
 }
 
@@ -130,7 +131,7 @@ export function useProfitabilityData(
     queryFn: async () => {
       const { data, error } = await db
         .from("payments")
-        .select("id, amount, payment_date, payment_method, member_id, members(first_name, last_name)")
+        .select("id, amount, payment_date, payment_method, member_id, subscription_id, members(first_name, last_name)")
         .eq("organization_id", orgId!)
         .eq("status", "completed")
         .gte("payment_date", filters.dateFrom)
@@ -296,10 +297,11 @@ export function useProfitabilityData(
 
     // Dédoublonnage : les abonnements/renouvellements réglés au POS sont déjà
     // enregistrés dans `payments` — on retire les ventes POS virtuelles doublons.
-    const posKeys = buildSubscriptionKeys(payments.map((p: RawPayment) => ({
+    const posIndex = buildSubscriptionIndex(payments.map((p: RawPayment) => ({
       memberId: p.member_id ?? null,
       amount: safeNum(p.amount),
       date: p.payment_date,
+      subscriptionId: p.subscription_id ?? null,
     })))
     const filteredPosTransactions = posTransactions.filter((t: RawPosTransaction) =>
       !isDuplicateSubscriptionPos({
@@ -307,7 +309,7 @@ export function useProfitabilityData(
         amount: safeNum(t.total),
         date: t.created_at,
         items: t.items,
-      }, posKeys)
+      }, posIndex)
     )
 
     const posRevenue = filteredPosTransactions.reduce((s: number, t: RawPosTransaction) => s + safeNum(t.total), 0)

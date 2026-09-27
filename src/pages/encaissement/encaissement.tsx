@@ -27,7 +27,7 @@ import { IS_MOCK } from "@/lib/config"
 import { useToast } from "@/components/ui/toast"
 import { useOpenMember } from "@/hooks/useOpenMember"
 import type { PaymentChange, Member } from "@/types/supabase"
-import { buildSubscriptionKeys, paymentDedupeKey } from "@/lib/ledger-dedupe"
+import { buildSubscriptionIndex, extractVirtualSubscriptionRefs, isDuplicateSubscriptionMatch } from "@/lib/ledger-dedupe"
 
 interface EncaissementRow {
   id: string
@@ -41,6 +41,9 @@ interface EncaissementRow {
   memberId: string | null
   memberName: string
   isVirtualSubscription?: boolean
+  virtualSubscriptionIds?: string[]
+  hasRenewal?: boolean
+  subscriptionId?: string | null
 }
 
 function getTopRole(roles: { role: string }[]): string {
@@ -53,12 +56,18 @@ function getTopRole(roles: { role: string }[]): string {
 }
 
 function dedupeRows(subs: EncaissementRow[], posRows: EncaissementRow[]): EncaissementRow[] {
-  const keys = buildSubscriptionKeys(subs)
-  const filtered = posRows.filter(p => {
-    if (!p.isVirtualSubscription || !p.memberId) return true
-    const k = paymentDedupeKey(p.memberId, p.amount, p.date)
-    return k === null || !keys.has(k)
-  })
+  const index = buildSubscriptionIndex(subs.map((s) => ({
+    memberId: s.memberId,
+    amount: s.amount,
+    date: s.date,
+    subscriptionId: s.subscriptionId ?? null,
+  })))
+  const filtered = posRows.filter(p =>
+    !isDuplicateSubscriptionMatch(p.memberId, p.amount, p.date, {
+      subscriptionIds: p.virtualSubscriptionIds ?? [],
+      hasRenewal: p.hasRenewal ?? false,
+    }, index)
+  )
   return [...subs, ...filtered]
 }
 
@@ -121,7 +130,7 @@ export default function Encaissement() {
       const dateToEnd = new Date(y, m - 1, d + 1)
       const dateToEndStr = `${dateToEnd.getFullYear()}-${String(dateToEnd.getMonth() + 1).padStart(2, "0")}-${String(dateToEnd.getDate()).padStart(2, "0")}`
       const [paymentsRes, posRes] = await Promise.all([
-        supabase.from("payments").select("id, amount, payment_date, payment_method, status, member_id, member_subscriptions!inner(subscription_types(name)), members(first_name, last_name)").eq("organization_id", orgId).eq("status", "completed").gte("payment_date", dateFrom).lt("payment_date", dateToEndStr).order("payment_date", { ascending: false }),
+        supabase.from("payments").select("id, amount, payment_date, payment_method, status, member_id, subscription_id, member_subscriptions!inner(subscription_types(name)), members(first_name, last_name)").eq("organization_id", orgId).eq("status", "completed").gte("payment_date", dateFrom).lt("payment_date", dateToEndStr).order("payment_date", { ascending: false }),
         supabase.from("pos_transactions").select("id, total, created_at, payment_method, payment_status, member_id, items, members(first_name, last_name)").eq("organization_id", orgId).eq("payment_status", "completed").gte("created_at", dateFrom).lt("created_at", dateToEndStr).order("created_at", { ascending: false }),
       ])
       if (paymentsRes.error) throw paymentsRes.error
@@ -141,6 +150,7 @@ export default function Encaissement() {
           status: p.status,
           memberId: p.member_id,
           memberName: p.members ? `${toUpper(p.members.first_name)} ${toUpper(p.members.last_name)}` : "-",
+          subscriptionId: p.subscription_id ?? null,
         }
       })
       const posRows: EncaissementRow[] = ((pos ?? []) as any[]).map(p => {
@@ -185,6 +195,8 @@ export default function Encaissement() {
           memberId: p.member_id,
           memberName: p.members ? `${toUpper(p.members.first_name)} ${toUpper(p.members.last_name)}` : "-",
           isVirtualSubscription: hasSub || hasRenewal,
+          virtualSubscriptionIds: extractVirtualSubscriptionRefs(items).subscriptionIds,
+          hasRenewal,
         }
       })
       const deduped = dedupeRows(subs, posRows)
