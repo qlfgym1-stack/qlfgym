@@ -142,6 +142,7 @@
 
 - **Déploiement du correctif dedup effectué le 27/09/2026** (autorisation utilisateur) : commit `c9bcd25` → deployment `dpl_E2GEL4ddp4LurbBvSyfaJA439aGK`, aliasé sur **`https://qlf-gym.vercel.app`**. Vérifié en prod : `sw.js` à **13 entrées** de precache, `version.json` = build 231, et le chunk `assets/ledger-dedupe-vrWkYAdm.js` servi avec la nouvelle logique `bySubscriptionId` (1269 octets).
   - **Effet attendu sur `/encaissement`** : mois 590 140 → **586 940 DA** (les 2 vrais doublons de 1 200 + 2 000 DA passent enfin par l'appariement exact). Jour 19 450 et semaine 179 700 inchangés. **Si la baisse du mois dépasse 3 200 DA, c'est qu'une vente légitime a été absorbée → rollback immédiat.**
+  - ✅ **Vérifié par l'utilisateur le 27/09/2026** : `/encaissement` affiche mois **586 940,00 DA**, exactement la valeur attendue (590 140 − 3 200). La baisse est bornée : les 2 vrais doublons sont capturés, aucune vente légitime absorbée. Correctif validé en prod.
   - Le domaine périmé `qlfgym.vercel.app` a été re-vérifié après déploiement : il sert toujours l'ancien build (**130 entrées** de precache). La prudence documentée reste justifiée.
 
 ## Latest (29/08/2026)
@@ -183,7 +184,6 @@
 - **Assistant IA** : moteur règles locales (aucune clé API, hors-ligne, testable), prévisions par régression linéaire + saisonnalité, insights/actions via clés i18n paramétrées `{param}` — cohérent avec rentabilite/assistant-comptable
 
 ## Next Steps
-- **Vérification post-déploiement du correctif dedup** (prioritaire) : sur `https://qlf-gym.vercel.app`, `/encaissement` doit afficher mois **586 940** (590 140 − 3 200), jour 19 450, semaine 179 700. Contrôler que seule la baisse du mois intervient, et que les 3 ventes légitimes (`676ac138`, `ca481ad6`, `b0fc0a1c`) sont **toujours présentes** dans l'historique. Puis vérifier la cohérence de `/dashboard`, `/assistant-comptable`, `/rentabilite` et `/member-insights`.
 - Test manuel navigateur (Ctrl+Shift+R) sur `https://qlf-gym.vercel.app` : `/display`, `/pos` (2 checkouts simultanés = 1 seule transaction), `/pointage` + `/notifications`, `/member-insights` (KPIs CA/LTV = 1127 adhérents)
 - ⚠️ `max_rows` prod toujours à 1000 (non pilotable en API/SQL) → dashboard Supabase → Settings → API. Non bloquant : `fetchAllPages` rend les chiffres corrects.
 - Test manuel navigateur (Ctrl+Shift+R) : `/ai-assistant` (KPIs, actions P0/P1/P2, graphique heures, produits phares, prévisions confiance, insights EN/AR/FR) + test corporate POS (adhérent avec carte → panier abonnement → remise auto/retirable → paiement RPC montant remisé) + recherche navbar (`/members?q=`) + `/member-insights` (KPIs, churn, segments, matrice, fréquentation)
