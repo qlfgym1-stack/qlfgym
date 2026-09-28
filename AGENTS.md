@@ -153,6 +153,14 @@
 - **Vérifications** : tsc ✅ · vitest ✅ 254/254 · vite build ✅ (precache 13) · migrations 00133 appliquée · Edge Functions 10 ACTIVE · prod buildDate à jour.
 - **Limite connue, NON traitée** : les imports XLSX (membres/dépenses/paiements) cherchent des en-têtes anglais (`full_name`, `phone`…) alors que les exports écrivent des libellés traduits (`Nom complet`, `Téléphone`…). Réexporter puis réimporter **perd les noms/téléphones**. Correctif proposé (non fait) : normalisation d'en-têtes (minuscules + accents retirés + alias multi-langues). Sur demande.
 
+## Latest (28/09/2026) — roundtrip XLSX + export membres complet (commit `2c5ab32`)
+- **Exports** : le bouton « Exporter des membres » ne sortait que 5 colonnes (`full_name`, email, phone, gender, status) **et seulement la page courante**. Corrigé dans `handleExport` : **21 colonnes** (N°, Prénom, Nom, Nom complet, Genre, Date de naissance, E-mail, Téléphone, Adresse, Contact d'urgence, Tél. d'urgence, Statut, Dernière visite, Notes, Code-barres, Carte entreprise, Plan, Début abon, Fin abon, Visites, Nb abonnements) + **tous les membres filtrés** via `fetchAllPages` (au-delà du plafond `max_rows` de PostgREST) + spinner. Dates formatées, téléphone `formatPhone`, nom de convention résolu via `corporate`.
+- **Imports normalisés multi-locales** : `src/lib/xlsxImport.ts` (`normalizeHeader` : accents retirés + minuscules + aliases FR/EN/AR ; `buildColumnIndex` ; `canonicalValues`). Branché sur **membres, dépenses, paiements, produits** — les en-têtes d'export traduits (`Nom complet`, `Téléphone`…) sont reconnus à l'import (roundtrip FR/EN/AR). L'import membre lit aussi `birth_date`, `status`, `member_number`, `emergency_contact`, `last_visit` (au lieu de valeurs forcées).
+- **Alias produits** : ajouté `code barres` (l'en-tête exporté « Code-barres » → `code barres`).
+- **i18n** : nouvelles clés `members.plan` / `members.subStatus` / `members.visits` (fr/en/ar).
+- **Tests** : `src/lib/xlsxImport.test.ts` (8 tests roundtrip en-têtes FR/EN/AR).
+- **Vérifs** : tsc ✅ zéro erreur · vitest ✅ 262/262 · vite build ✅ (precache 13). Commit `2c5ab32` poussé sur `deploy/member-insights`. **Non déployé Vercel** (aucune autorisation demandée).
+
 ## Latest (27/09/2026) — protocole de vérification complète
 - **Demande utilisateur** : après **chaque** correction, vérifier que tout est enregistré partout (local, git, GitHub, Supabase, migration, frontend, backend, déploiement Vercel) et répondre **OK / NON**.
 - **Script créé** : `scripts/verify-all.ps1` — 8 postes de contrôle, sortie `OK`/`NON` par poste + verdict global, code de sortie 0/1.
