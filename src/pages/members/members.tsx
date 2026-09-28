@@ -521,11 +521,16 @@ export default function Members() {
     { key: 'notes', label: t('members.notes') },
     { key: 'barcode', label: t('products.barcode') },
     { key: 'corporate', label: t('members.corporateCard') },
+    { key: 'coach', label: t('members.fullExport.coach') },
+    { key: 'rfid_uid', label: t('members.fullExport.rfidUid') },
+    { key: 'rfid_status', label: t('members.fullExport.rfidStatus') },
     { key: 'plan', label: t('members.plan') },
     { key: 'start_date', label: t('members.startDate') },
     { key: 'end_date', label: t('members.endDate') },
     { key: 'visits', label: t('members.visits') },
     { key: 'sub_count', label: t('members.subscriptions') },
+    { key: 'created_at', label: t('members.fullExport.createdAt') },
+    { key: 'updated_at', label: t('members.fullExport.updatedAt') },
   ]
 
   function handleSort(column: string) {
@@ -881,10 +886,26 @@ export default function Members() {
           return q.range(from, to)
         })
       }
-      const subMapAny = memberSubMap as Record<string, { name?: string; start_date?: string | null; end_date?: string | null; sub_count?: number }>
+      const ExcelJS = await import('exceljs')
+      const wb = new ExcelJS.default.Workbook()
+      const memberNameMap = new Map<string, string>()
+      for (const m of members) memberNameMap.set(m.id, memberFullName(m))
+      const addSheet = (name: string, columns: Array<{ key: string; label: string }>, rows: Array<Record<string, unknown>>) => {
+        const ws = wb.addWorksheet(name)
+        ws.columns = columns.map(c => ({ header: c.label, key: c.label, width: 20 }))
+        rows.forEach(row => {
+          const mapped: Record<string, unknown> = {}
+          for (const col of columns) mapped[col.label] = row[col.key] ?? ''
+          ws.addRow(mapped)
+        })
+      }
+      // Feuille 1 : Membres (toutes colonnes + RFID + coach + dates)
+      const subMapAny = memberSubMap as Record<string, { name?: string; start_date?: string | null; end_date?: string | null; sub_count?: number; status?: string; total_amount?: number }>
       const corpMap = new Map((corporateAccounts ?? []).map((c: { id: string; company_name: string }) => [c.id, c.company_name]))
-      const rows = members.map((m) => {
+      const coachMap = new Map((coaches ?? []).map((c: { id: string; first_name: string; last_name: string }) => [c.id, `${c.first_name} ${c.last_name}`.trim()]))
+      const memberRows = members.map((m) => {
         const sub = subMapAny[m.id]
+        const rfidInfo = rfidData?.[m.id] ?? null
         return {
           member_number: m.member_number ?? '',
           first_name: m.first_name ?? '',
@@ -902,22 +923,141 @@ export default function Members() {
           notes: m.notes ?? '',
           barcode: m.barcode ?? '',
           corporate: m.corporate_id ? (corpMap.get(m.corporate_id) ?? '') : '',
+          coach: m.coach_id ? (coachMap.get(m.coach_id) ?? '') : '',
+          rfid_uid: rfidInfo?.rfid_uid ?? '',
+          rfid_status: rfidInfo?.status ?? '',
           plan: sub?.name ?? '',
           start_date: sub?.start_date ?? '',
           end_date: sub?.end_date ?? '',
           visits: attendanceCounts?.[m.id] ?? 0,
           sub_count: sub?.sub_count ?? 0,
+          created_at: m.created_at ? formatDate(m.created_at) : '',
+          updated_at: m.updated_at ? formatDate(m.updated_at) : '',
         }
       })
-      const ExcelJS = await import('exceljs')
-      const wb = new ExcelJS.default.Workbook()
-      const ws = wb.addWorksheet('data')
-      ws.columns = exportColumns.map(c => ({ header: c.label, key: c.label, width: 20 }))
-      rows.forEach((row) => {
-        const mapped: Record<string, unknown> = {}
-        for (const col of exportColumns) mapped[col.label] = row[col.key as keyof typeof row] ?? ''
-        ws.addRow(mapped)
-      })
+      // Feuille 2 : Abonnements (toutes souscriptions membres)
+      const subs = orgId && !IS_MOCK
+        ? await fetchAllPages<Record<string, unknown>>((from, to) =>
+            supabase.from('member_subscriptions')
+              .select('id, member_id, start_date, end_date, total_amount, amount_paid, discount_rate, sessions_total, sessions_used, status, subscription_types!inner(name), created_at', { count: 'exact' })
+              .eq('organization_id', orgId).range(from, to))
+        : []
+      const subSheetColumns: Array<{ key: string; label: string }> = [
+        { key: 'member', label: t('members.fullExport.member') },
+        { key: 'plan', label: t('members.plan') },
+        { key: 'start_date', label: t('members.startDate') },
+        { key: 'end_date', label: t('members.endDate') },
+        { key: 'total_amount', label: t('members.fullExport.amount') },
+        { key: 'amount_paid', label: t('members.fullExport.paid') },
+        { key: 'balance', label: t('members.fullExport.balance') },
+        { key: 'discount_rate', label: t('members.fullExport.discount') },
+        { key: 'sessions_total', label: t('members.fullExport.sessionsTotal') },
+        { key: 'sessions_used', label: t('members.fullExport.sessionsUsed') },
+        { key: 'status', label: t('members.subStatus') },
+        { key: 'created_at', label: t('members.fullExport.createdAt') },
+      ]
+      addSheet(t('members.fullExport.sheetSubscriptions'), subSheetColumns, (subs as any[]).map(s => ({
+        member: memberNameMap.get((s as any).member_id) ?? (s as any).member_id ?? '',
+        plan: (s as any).subscription_types?.name ?? '',
+        start_date: (s as any).start_date ? formatDate((s as any).start_date) : '',
+        end_date: (s as any).end_date ? formatDate((s as any).end_date) : '',
+        total_amount: (s as any).total_amount ?? '',
+        amount_paid: (s as any).amount_paid ?? '',
+        balance: ((s as any).total_amount ?? 0) - ((s as any).amount_paid ?? 0),
+        discount_rate: (s as any).discount_rate != null ? `${(s as any).discount_rate}%` : '',
+        sessions_total: (s as any).sessions_total ?? '',
+        sessions_used: (s as any).sessions_used ?? '',
+        status: (s as any).status ?? '',
+        created_at: (s as any).created_at ? formatDate((s as any).created_at) : '',
+      })))
+      // Feuille 3 : Paiements
+      const pays = orgId && !IS_MOCK
+        ? await fetchAllPages<Record<string, unknown>>((from, to) =>
+            supabase.from('payments')
+              .select('id, member_id, amount, payment_date, payment_method, status, notes, discount, invoice_number, cancelled_at, created_at', { count: 'exact' })
+              .eq('organization_id', orgId).range(from, to))
+        : []
+      const paySheetColumns: Array<{ key: string; label: string }> = [
+        { key: 'member', label: t('members.fullExport.member') },
+        { key: 'amount', label: t('members.fullExport.amount') },
+        { key: 'payment_date', label: t('payments.date') },
+        { key: 'payment_method', label: t('payments.method') },
+        { key: 'status', label: t('payments.status') },
+        { key: 'discount', label: t('payments.discount') },
+        { key: 'invoice_number', label: t('payments.invoice') },
+        { key: 'notes', label: t('payments.notes') },
+        { key: 'cancelled_at', label: t('members.fullExport.cancelledAt') },
+        { key: 'created_at', label: t('members.fullExport.createdAt') },
+      ]
+      addSheet(t('members.fullExport.sheetPayments'), paySheetColumns, (pays as any[]).map(p => ({
+        member: memberNameMap.get((p as any).member_id) ?? (p as any).member_id ?? '',
+        amount: (p as any).amount ?? '',
+        payment_date: (p as any).payment_date ? formatDate((p as any).payment_date) : '',
+        payment_method: (p as any).payment_method ?? '',
+        status: (p as any).status ?? '',
+        discount: (p as any).discount ?? '',
+        invoice_number: (p as any).invoice_number ?? '',
+        notes: (p as any).notes ?? '',
+        cancelled_at: (p as any).cancelled_at ? formatDate((p as any).cancelled_at) : '',
+        created_at: (p as any).created_at ? formatDate((p as any).created_at) : '',
+      })))
+      // Feuille 4 : Pointages
+      const atts = orgId && !IS_MOCK
+        ? await fetchAllPages<Record<string, unknown>>((from, to) =>
+            supabase.from('attendance')
+              .select('id, member_id, check_in, check_out, type, source, created_at', { count: 'exact' })
+              .eq('organization_id', orgId).range(from, to))
+        : []
+      const attSheetColumns: Array<{ key: string; label: string }> = [
+        { key: 'member', label: t('members.fullExport.member') },
+        { key: 'check_in', label: t('members.fullExport.checkIn') },
+        { key: 'check_out', label: t('members.fullExport.checkOut') },
+        { key: 'type', label: t('members.fullExport.type') },
+        { key: 'source', label: t('members.fullExport.source') },
+        { key: 'created_at', label: t('members.fullExport.createdAt') },
+      ]
+      addSheet(t('members.fullExport.sheetAttendance'), attSheetColumns, (atts as any[]).map(a => ({
+        member: memberNameMap.get((a as any).member_id) ?? (a as any).member_id ?? '',
+        check_in: (a as any).check_in ? formatDate((a as any).check_in) : '',
+        check_out: (a as any).check_out ? formatDate((a as any).check_out) : '',
+        type: (a as any).type ?? '',
+        source: (a as any).source ?? '',
+        created_at: (a as any).created_at ? formatDate((a as any).created_at) : '',
+      })))
+      // Feuille 5 : Badges RFID
+      const rfids = orgId && !IS_MOCK
+        ? await fetchAllPages<Record<string, unknown>>((from, to) =>
+            supabase.from('rfid_cards')
+              .select('id, member_id, rfid_uid, status, assigned_at, replaced_at, replaced_by, reason, notes, created_at, updated_at', { count: 'exact' })
+              .range(from, to))
+        : []
+      const rfidIds = new Set(members.map(m => m.id))
+      const rfidSheetColumns: Array<{ key: string; label: string }> = [
+        { key: 'member', label: t('members.fullExport.member') },
+        { key: 'rfid_uid', label: t('members.fullExport.rfidUid') },
+        { key: 'status', label: t('members.fullExport.rfidStatus') },
+        { key: 'assigned_at', label: t('members.fullExport.assignedAt') },
+        { key: 'replaced_at', label: t('members.fullExport.replacedAt') },
+        { key: 'replaced_by', label: t('members.fullExport.replacedBy') },
+        { key: 'reason', label: t('members.fullExport.reason') },
+        { key: 'notes', label: t('members.notes') },
+        { key: 'created_at', label: t('members.fullExport.createdAt') },
+        { key: 'updated_at', label: t('members.fullExport.updatedAt') },
+      ]
+      addSheet(t('members.fullExport.sheetRfid'), rfidSheetColumns, (rfids as any[]).filter(r => rfidIds.has((r as any).member_id)).map(r => ({
+        member: memberNameMap.get((r as any).member_id) ?? (r as any).member_id ?? '',
+        rfid_uid: (r as any).rfid_uid ?? '',
+        status: (r as any).status ?? '',
+        assigned_at: (r as any).assigned_at ? formatDate((r as any).assigned_at) : '',
+        replaced_at: (r as any).replaced_at ? formatDate((r as any).replaced_at) : '',
+        replaced_by: (r as any).replaced_by ?? '',
+        reason: (r as any).reason ?? '',
+        notes: (r as any).notes ?? '',
+        created_at: (r as any).created_at ? formatDate((r as any).created_at) : '',
+        updated_at: (r as any).updated_at ? formatDate((r as any).updated_at) : '',
+      })))
+      // Feuille Principale : Membres (avec toutes les colonnes)
+      addSheet(t('members.fullExport.sheetMembers'), exportColumns, memberRows as Array<Record<string, unknown>>)
       await downloadWorkbook(wb, 'members')
     } catch (err) {
       toast({ variant: 'destructive', title: t('errors.generic'), description: (err as Error).message })
