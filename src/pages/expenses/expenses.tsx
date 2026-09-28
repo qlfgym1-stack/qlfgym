@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/card"
 import { useToast } from "@/components/ui/toast"
 import { downloadWorkbook } from "@/lib/exportWorkbook"
+import { buildColumnIndex, canonicalValues, EXPENSE_ALIASES } from "@/lib/xlsxImport"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Plus, Download, Upload, Search, Loader2, Trash2, Package, ExternalLink,
@@ -200,23 +201,24 @@ export default function ExpensesPage() {
       ws.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber - 1] = String(cell.value ?? '')
       })
-      const json: Record<string, string>[] = []
+      const cols = buildColumnIndex(headers, EXPENSE_ALIASES)
+      const json: Record<string, unknown>[] = []
       ws.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return
-        const obj: Record<string, string> = {}
+        const cells: unknown[] = []
         row.eachCell((cell, colNumber) => {
-          obj[headers[colNumber - 1]] = String(cell.value ?? '')
+          cells[colNumber - 1] = cell.value
         })
-        json.push(obj)
+        json.push(canonicalValues(cells, cols))
       })
       const rows: ImportRow[] = json.map((r) => {
-        const rawAmount = Number(r.amount ?? r.Amount ?? 0)
+        const rawAmount = Number(r.amount ?? 0)
         return {
-          category: String(r.category || r.Category || "products"),
-          description: String(r.description || r.Description || ""),
+          category: String(r.category ?? "products"),
+          description: String(r.description ?? ""),
           amount: Number.isNaN(rawAmount) ? 0 : rawAmount,
-          expense_date: String(r.expense_date || r.Date || format(new Date(), "yyyy-MM-dd")),
-          notes: String(r.notes || r.Notes || ""),
+          expense_date: String(r.expense_date ?? format(new Date(), "yyyy-MM-dd")),
+          notes: String(r.notes ?? ""),
         }
       })
       setImportData(rows)

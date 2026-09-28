@@ -24,7 +24,9 @@ import { Search, Plus, Download, Upload, Pencil, Trash2, Loader2, Shield, Credit
 import { Pagination } from '@/components/ui/pagination'
 import { WhatsAppButton } from '@/components/ui/whatsapp-button'
 import { DEFAULT_TEMPLATES, templateForStatus, toneForStatus } from '@/lib/whatsapp'
-import { useExportCsv } from '@/hooks/useExportCsv'
+import { fetchAllPages } from '@/lib/supabase-paging'
+import { downloadWorkbook } from '@/lib/exportWorkbook'
+import { buildColumnIndex, canonicalValues, MEMBER_ALIASES } from '@/lib/xlsxImport'
 import { formatDate, getInitials, getStatusColor, toUpper, formatCurrency, formatPhone, isValidDzPhone, displayPhone, memberFullName, splitFullName } from '@/lib/utils'
 import type { Member, SubscriptionType, RfidCard } from '@/types/supabase'
 import { RfidManagementDialog, RfidCreateSection } from './rfid-management'
@@ -119,14 +121,15 @@ function ImportDialog({ open, onOpenChange, onImport, t: tFn }: ImportDialogProp
       ws.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber - 1] = String(cell.value ?? '')
       })
+      const cols = buildColumnIndex(headers, MEMBER_ALIASES)
       const json: Record<string, unknown>[] = []
       ws.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return
-        const obj: Record<string, unknown> = {}
+        const cells: unknown[] = []
         row.eachCell((cell, colNumber) => {
-          obj[headers[colNumber - 1]] = cell.value ?? ''
+          cells[colNumber - 1] = cell.value
         })
-        json.push(obj)
+        json.push(canonicalValues(cells, cols))
       })
       onImport(json)
       onOpenChange(false)
@@ -197,6 +200,7 @@ export default function Members() {
   const photoUrlRef = useRef<string | null>(null)
   const [photoUploading, setPhotoUploading] = useState(false)
   const tempMemberIdRef = useRef(crypto.randomUUID())
+  const [isExporting, setIsExporting] = useState(false)
   const [mockMembers, setMockMembers] = useState<Member[]>(MOCK_MEMBERS)
   const [mockSubMap, setMockSubMap] = useState<Record<string, { id: string; subscription_type_id: string; name: string; status: string; total_amount: number; start_date: string; end_date: string; sub_count: number }>>({
     'mock-1': { id: 'mock-ms-1', subscription_type_id: 'mock-st-2', name: '1 Mois', status: 'active', total_amount: 2400, start_date: new Date(Date.now() - 86400000 * 10).toISOString().split('T')[0], end_date: new Date(Date.now() + 86400000 * 20).toISOString().split('T')[0], sub_count: 2 },
@@ -500,23 +504,29 @@ export default function Members() {
     enabled: !!orgId,
   })
 
-  const { exportCsv } = useExportCsv(
-    (membersData?.data ?? []).map((m: Member) => ({
-      full_name: memberFullName(m),
-      email: m.email ?? '',
-      phone: formatPhone(m.phone) ?? '',
-      gender: m.gender ?? '',
-      status: m.status,
-    })),
-    'members',
-    [
-      { key: 'full_name', label: t('members.fullName') },
-      { key: 'email', label: t('members.email') },
-      { key: 'phone', label: t('members.phone') },
-      { key: 'gender', label: t('members.gender') },
-      { key: 'status', label: t('common.status') },
-    ]
-  )
+  const exportColumns: Array<{ key: string; label: string }> = [
+    { key: 'member_number', label: t('members.profile.memberNumber') },
+    { key: 'first_name', label: t('members.firstName') },
+    { key: 'last_name', label: t('members.lastName') },
+    { key: 'full_name', label: t('members.fullName') },
+    { key: 'gender', label: t('members.gender') },
+    { key: 'birth_date', label: t('members.birthDate') },
+    { key: 'email', label: t('members.email') },
+    { key: 'phone', label: t('members.phone') },
+    { key: 'address', label: t('members.address') },
+    { key: 'emergency_contact', label: t('members.emergencyContact') },
+    { key: 'emergency_phone', label: t('members.emergencyPhone') },
+    { key: 'status', label: t('common.status') },
+    { key: 'last_visit', label: t('members.lastVisit') },
+    { key: 'notes', label: t('members.notes') },
+    { key: 'barcode', label: t('products.barcode') },
+    { key: 'corporate', label: t('members.corporateCard') },
+    { key: 'plan', label: t('members.plan') },
+    { key: 'start_date', label: t('members.startDate') },
+    { key: 'end_date', label: t('members.endDate') },
+    { key: 'visits', label: t('members.visits') },
+    { key: 'sub_count', label: t('members.subscriptions') },
+  ]
 
   function handleSort(column: string) {
     setPage(0)
@@ -786,11 +796,21 @@ export default function Members() {
   const handleImport = useCallback(async (rows: any[]) => {
     if (!orgId) return
     const imported = rows.map((r: any) => {
+      const combined =
+        r.firstName || r.lastName
+          ? `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim()
+          : ''
       const rawName = String(
-        r.nomprenom || r.nom_prenom || r.nom_complet || r.full_name || r.FullName ||
+        r.name || combined ||
         `${r.first_name || r.FirstName || r.firstName || ''} ${r.last_name || r.LastName || r.lastName || ''}`.trim()
       )
       const { first_name, last_name } = splitFullName(rawName)
+      const rawBirth = String(r.birthDate || r.birthdate || r.BirthDate || r.birth_date || '')
+      const birth_date = rawBirth && /^\d{4}-\d{2}-\d{2}/.test(rawBirth) ? rawBirth.slice(0, 10) : null
+      const rawLastVisit = String(r.lastVisit || r.last_visit || r.LastVisit || '')
+      const last_visit = rawLastVisit && /^\d{4}-\d{2}-\d{2}/.test(rawLastVisit) ? rawLastVisit.slice(0, 10) : null
+      const rawStatus = String(r.status || r.Status || '').toLowerCase()
+      const status = (['active', 'inactive', 'suspended', 'blocked'] as const).includes(rawStatus as any) ? (rawStatus as Member['status']) : 'active'
       return {
         id: `mock-${crypto.randomUUID()}`,
         organization_id: orgId,
@@ -801,16 +821,16 @@ export default function Members() {
         phone: formatPhone(r.phone || r.Phone || null),
         gender: r.gender || r.Gender || null,
         photo_url: null,
-        status: 'active' as const,
-        last_visit: null,
-        notes: null,
-        birth_date: null,
-        address: null,
-        emergency_contact: null,
-        emergency_phone: formatPhone(r.emergency_phone || r.EmergencyPhone || null),
+        status,
+        last_visit,
+        notes: r.notes || null,
+        birth_date,
+        address: r.address || null,
+        emergency_contact: r.emergencyContact || r.emergency_contact || r.EmergencyContact || null,
+        emergency_phone: formatPhone(r.emergencyPhone || r.emergency_phone || r.EmergencyPhone || null),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        member_number: null,
+        member_number: r.memberNumber || r.member_number || r.MemberNumber || null,
       }
     }) as Member[]
     if (IS_MOCK) {
@@ -829,7 +849,81 @@ export default function Members() {
   }, [orgId, supabase, queryClient, toast])
 
   async function handleExport() {
-    exportCsv()
+    if (isExporting) return
+    if (!orgId && !IS_MOCK) return
+    setIsExporting(true)
+    try {
+      let members: Member[]
+      if (IS_MOCK) {
+        let list = [...mockMembers]
+        if (search) {
+          const q = search.toLowerCase()
+          list = list.filter(m =>
+            (m.first_name ?? '').toLowerCase().includes(q) ||
+            (m.last_name ?? '').toLowerCase().includes(q) ||
+            memberFullName(m).toLowerCase().includes(q) ||
+            (m.email ?? '').toLowerCase().includes(q) ||
+            (m.phone ?? '').toLowerCase().includes(q) ||
+            (m.member_number ?? '').toLowerCase().includes(q)
+          )
+        }
+        if (statusFilter !== 'all') list = list.filter(m => m.status === statusFilter)
+        if (genderFilter !== 'all') list = list.filter(m => m.gender === genderFilter)
+        members = list
+      } else {
+        members = await fetchAllPages<Member>((from, to) => {
+          let q = supabase.from('members').select('*', { count: 'exact' }).eq('organization_id', orgId!)
+          if (debouncedSearch) {
+            q = q.or(`first_name.ilike.%${debouncedSearch}%,last_name.ilike.%${debouncedSearch}%,full_name.ilike.%${debouncedSearch}%,email.ilike.%${debouncedSearch}%,phone.ilike.%${debouncedSearch}%,member_number.ilike.%${debouncedSearch}%`)
+          }
+          if (statusFilter !== 'all') q = q.eq('status', statusFilter as any)
+          if (genderFilter !== 'all') q = q.eq('gender', genderFilter)
+          return q.range(from, to)
+        })
+      }
+      const subMapAny = memberSubMap as Record<string, { name?: string; start_date?: string | null; end_date?: string | null; sub_count?: number }>
+      const corpMap = new Map((corporateAccounts ?? []).map((c: { id: string; company_name: string }) => [c.id, c.company_name]))
+      const rows = members.map((m) => {
+        const sub = subMapAny[m.id]
+        return {
+          member_number: m.member_number ?? '',
+          first_name: m.first_name ?? '',
+          last_name: m.last_name ?? '',
+          full_name: memberFullName(m),
+          gender: m.gender ?? '',
+          birth_date: m.birth_date ?? '',
+          email: m.email ?? '',
+          phone: formatPhone(m.phone) ?? '',
+          address: m.address ?? '',
+          emergency_contact: m.emergency_contact ?? '',
+          emergency_phone: formatPhone(m.emergency_phone) ?? '',
+          status: m.status,
+          last_visit: m.last_visit ? formatDate(m.last_visit) : '',
+          notes: m.notes ?? '',
+          barcode: m.barcode ?? '',
+          corporate: m.corporate_id ? (corpMap.get(m.corporate_id) ?? '') : '',
+          plan: sub?.name ?? '',
+          start_date: sub?.start_date ?? '',
+          end_date: sub?.end_date ?? '',
+          visits: attendanceCounts?.[m.id] ?? 0,
+          sub_count: sub?.sub_count ?? 0,
+        }
+      })
+      const ExcelJS = await import('exceljs')
+      const wb = new ExcelJS.default.Workbook()
+      const ws = wb.addWorksheet('data')
+      ws.columns = exportColumns.map(c => ({ header: c.label, key: c.label, width: 20 }))
+      rows.forEach((row) => {
+        const mapped: Record<string, unknown> = {}
+        for (const col of exportColumns) mapped[col.label] = row[col.key as keyof typeof row] ?? ''
+        ws.addRow(mapped)
+      })
+      await downloadWorkbook(wb, 'members')
+    } catch (err) {
+      toast({ variant: 'destructive', title: t('errors.generic'), description: (err as Error).message })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const totalPages = Math.ceil((membersData?.count ?? 0) / pageSize)
@@ -845,8 +939,8 @@ export default function Members() {
               <Upload className="mr-2 h-4 w-4" />
               {t('members.import')}
             </Button>
-            <Button variant="outline" onClick={handleExport}>
-              <Download className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               {t('members.export')}
             </Button>
             <Button onClick={openAddDialog}>

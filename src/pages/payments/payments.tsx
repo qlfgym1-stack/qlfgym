@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { downloadWorkbook } from "@/lib/exportWorkbook"
+import { buildColumnIndex, canonicalValues, PAYMENT_ALIASES } from "@/lib/xlsxImport"
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table"
@@ -249,23 +250,24 @@ export default function PaymentsPage() {
       ws.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber - 1] = String(cell.value ?? '')
       })
-      const json: Record<string, string>[] = []
+      const cols = buildColumnIndex(headers, PAYMENT_ALIASES)
+      const json: Record<string, unknown>[] = []
       ws.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return
-        const obj: Record<string, string> = {}
+        const cells: unknown[] = []
         row.eachCell((cell, colNumber) => {
-          obj[headers[colNumber - 1]] = String(cell.value ?? '')
+          cells[colNumber - 1] = cell.value
         })
-        json.push(obj)
+        json.push(canonicalValues(cells, cols))
       })
       const rows: ImportRow[] = json.map((r) => {
-        const rawAmount = Number(r.amount ?? r.Amount ?? 0)
+        const rawAmount = Number(r.amount ?? 0)
         return {
-          member_name: String(r.member_name || r.Member || ""),
+          member_name: String(r.member_name ?? ""),
           amount: Number.isNaN(rawAmount) ? 0 : rawAmount,
-          payment_method: String(r.payment_method || r.Method || "cash"),
-          payment_date: String(r.payment_date || r.Date || format(new Date(), "yyyy-MM-dd")),
-          notes: String(r.notes || r.Notes || ""),
+          payment_method: String(r.payment_method ?? "cash"),
+          payment_date: String(r.payment_date ?? format(new Date(), "yyyy-MM-dd")),
+          notes: String(r.notes ?? ""),
         }
       })
       setImportData(rows)

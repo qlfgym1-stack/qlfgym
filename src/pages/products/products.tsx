@@ -33,6 +33,7 @@ import {
 } from "lucide-react"
 import { usePagination } from "@/hooks/usePagination"
 import { useExportCsv } from "@/hooks/useExportCsv"
+import { buildColumnIndex, canonicalValues, PRODUCT_ALIASES } from "@/lib/xlsxImport"
 import { Pagination } from "@/components/ui/pagination"
 import { Card, CardContent } from "@/components/ui/card"
 import { useNavigate } from "react-router-dom"
@@ -125,29 +126,26 @@ export default function ProductsPage() {
         headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           headers[colNumber - 1] = String(cell.value ?? '').trim()
         })
-        const stockCount = headers.filter(h => h.toUpperCase().includes('STOCK')).length
+        const cols = buildColumnIndex(headers, PRODUCT_ALIASES)
+        const toText = (val: unknown): unknown => {
+          if (val && typeof val === 'object' && 'richText' in val) {
+            return (val as any).richText.map((t: any) => t.text).join('')
+          }
+          if (val && typeof val === 'object' && 'text' in val) {
+            return (val as any).text
+          }
+          return val ?? ''
+        }
         const rows: Record<string, unknown>[] = []
         for (let rowNum = 2; rowNum <= ws.rowCount; rowNum++) {
           const row = ws.getRow(rowNum)
           if (!row.hasValues) continue
-          const obj: Record<string, unknown> = {}
-          let stockIdx = 0
+          const cells: unknown[] = []
           row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            let key = headers[colNumber - 1] || ''
-            if (key.toUpperCase().includes('STOCK') && stockCount > 1) {
-              key = stockIdx === 0 ? 'STOCK' : 'STOCK_2'
-              stockIdx++
-            }
-            const val = cell.value
-            if (val && typeof val === 'object' && 'richText' in val) {
-              obj[key] = (val as any).richText.map((t: any) => t.text).join('')
-            } else if (val && typeof val === 'object' && 'text' in val) {
-              obj[key] = (val as any).text
-            } else {
-              obj[key] = val ?? ''
-            }
+            cells[colNumber - 1] = toText(cell.value)
           })
-          if (Object.values(obj).some(v => v !== '' && v !== null)) {
+          const obj = canonicalValues(cells, cols)
+          if (Object.values(obj).some(v => String(v) !== '')) {
             rows.push(obj)
           }
         }
@@ -166,23 +164,23 @@ export default function ProductsPage() {
     // rejette l'insert en bloc).
     let invalidCategory = 0
     let products = importData.map(r => {
-      const rawCat = String(r.CATEGORY || r.category || '')
+      const rawCat = String(r.category ?? '')
       const category = normalizeCategory(rawCat)
       if (rawCat.trim() && (!category || !PRODUCT_CATEGORIES.has(category))) invalidCategory++
-      const stock = Number(r.STOCK ?? r.stock ?? r.Stock ?? 0) || null
+      const stock = Number(r.stock ?? r.stock2 ?? 0) || null
       return {
         organization_id: orgId,
-        name: String(r.NOM || r.nom || r.Name || r.name || '').trim(),
+        name: String(r.name ?? '').trim(),
         category: category && PRODUCT_CATEGORIES.has(category) ? category : null,
-        brand: String(r.MARQUE || r.marque || r.Brand || r.brand || '').trim() || null,
-        reference: String(r['REF*'] || r.REF || r.Ref || r.reference || '').trim() || null,
-        price: Number(r['PRICE DA'] ?? r.price ?? r.Price ?? 0),
-        cost: Number(r['COST (DA)'] ?? r.cost ?? r.Cost ?? 0) || null,
+        brand: String(r.brand ?? '').trim() || null,
+        reference: String(r.reference ?? '').trim() || null,
+        price: Number(r.price ?? 0),
+        cost: Number(r.cost ?? 0) || null,
         stock,
         // S2 : le ledger part de stock_initial = stock importé
         stock_initial: stock || 0,
-        barcode: String(r['CODE BARR*'] || r['CODE BARR'] || r.barcode || r.Barcode || '').trim() || null,
-        is_active: String(r.STATUS || r.status || '').toLowerCase() === 'inactif' || String(r.STATUS || r.status || '').toLowerCase() === 'inactive' ? false : true,
+        barcode: String(r.barcode ?? '').trim() || null,
+        is_active: String(r.status ?? '').toLowerCase() === 'inactif' || String(r.status ?? '').toLowerCase() === 'inactive' ? false : true,
       }
     })
     const skipped = products.filter(p => !p.name).length
