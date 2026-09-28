@@ -21,6 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/toast"
+import { downloadWorkbook } from "@/lib/exportWorkbook"
 import {
   Search, LogIn, LogOut, Download, Clock, UserCheck, UserX, AlertTriangle, Loader2,
 } from "lucide-react"
@@ -233,7 +234,7 @@ export default function AttendancePage() {
         [statusLabel]: h.check_out ? t("attendance.completed") : t("attendance.inProgress"),
       })
     })
-    await wb.xlsx.writeFile(`${t("attendance.exportFileName")}-${historyDateFrom}-${historyDateTo}.xlsx`)
+    await downloadWorkbook(wb, `${t("attendance.exportFileName")}-${historyDateFrom}-${historyDateTo}`)
   }
 
   const presentToday = membersWithAttendance.filter((m) => m.attendance).length

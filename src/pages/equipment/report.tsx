@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useNavigate, useLocation } from "react-router-dom"
 import { Loader2, Download } from "lucide-react"
+import { downloadWorkbook } from "@/lib/exportWorkbook"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 
 import { toUpper } from "../../lib/utils"
@@ -106,7 +107,7 @@ export default function ReportPage() {
       usageData.forEach((d) => {
         ws.addRow({ name: d.name, count: d.count })
       })
-      await wb.xlsx.writeFile(`equipment-report-${startDate}-to-${endDate}.xlsx`)
+      await downloadWorkbook(wb, `equipment-report-${startDate}-to-${endDate}`)
     } catch (err) {
       toast({ title: "Erreur", description: String(err), variant: "destructive" })
     }

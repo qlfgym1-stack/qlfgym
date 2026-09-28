@@ -27,6 +27,7 @@ import {
   Card, CardContent,
 } from "@/components/ui/card"
 import { useToast } from "@/components/ui/toast"
+import { downloadWorkbook } from "@/lib/exportWorkbook"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Plus, Download, Upload, Search, Loader2, Trash2, Package, ExternalLink,
@@ -268,7 +269,7 @@ export default function ExpensesPage() {
         Date: formatDate(e.expense_date),
       })
     })
-    await wb.xlsx.writeFile("depenses.xlsx")
+    await downloadWorkbook(wb, "depenses")
   }, [expenses, getCategoryLabel])
 
   return (

@@ -135,6 +135,7 @@ function ImportDialog({ open, onOpenChange, onImport, t: tFn }: ImportDialogProp
       console.error('Failed to read file')
     }
     reader.readAsArrayBuffer(file)
+    e.target.value = ""
   }
 
   return (

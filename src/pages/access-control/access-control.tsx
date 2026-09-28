@@ -5,6 +5,7 @@ import { useT } from "@/i18n"
 import { useAuth } from "@/stores/auth"
 import { usePagination } from "@/hooks/usePagination"
 import { useExportCsv } from "@/hooks/useExportCsv"
+import { downloadWorkbook } from "@/lib/exportWorkbook"
 import { PageHeader } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -265,7 +266,7 @@ export default function AccessControlPage() {
           validated_at: v.validated_at,
         })
       })
-      await wb.xlsx.writeFile("manual-validations.xlsx")
+      await downloadWorkbook(wb, "manual-validations")
     } catch (err) {
       toast({ title: "Erreur", description: String(err), variant: "destructive" })
     }

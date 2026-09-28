@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { downloadWorkbook } from '@/lib/exportWorkbook'
 
 interface ExportColumn {
   key: string
@@ -32,7 +33,7 @@ export function useExportXlsx<T extends Record<string, unknown>>(
         }
         ws.addRow(mapped)
       })
-      await wb.xlsx.writeFile(`${options?.filename ?? 'export'}.xlsx`)
+      await downloadWorkbook(wb, options?.filename ?? 'export')
     } finally {
       setIsExporting(false)
     }

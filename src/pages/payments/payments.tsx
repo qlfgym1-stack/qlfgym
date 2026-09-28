@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { downloadWorkbook } from "@/lib/exportWorkbook"
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table"
@@ -328,7 +329,7 @@ export default function PaymentsPage() {
         Notes: p.notes || "",
       })
     })
-    await wb.xlsx.writeFile("paiements.xlsx")
+    await downloadWorkbook(wb, "paiements")
   }, [payments, getMethodLabel])
 
   const filteredMembers = members?.filter((m: Pick<Member, "id" | "first_name" | "last_name">) =>
