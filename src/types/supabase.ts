@@ -58,9 +58,9 @@ export interface Database {
         Relationships: []
       }
       rfid_cards: {
-        Row: { id: string; member_id: string; rfid_uid: string; status: 'ACTIF' | 'REMPLACÉ' | 'DÉSACTIVÉ' | 'PERDU' | 'VOLÉ' | 'BLACKLISTÉ' | 'ARCHIVÉ'; assigned_at: string; replaced_at: string | null; replaced_by: string | null; reason: string | null; notes: string | null; created_by: string | null; created_at: string; updated_at: string }
-        Insert: { id?: string; member_id: string; rfid_uid: string; status?: 'ACTIF' | 'REMPLACÉ' | 'DÉSACTIVÉ' | 'PERDU' | 'VOLÉ' | 'BLACKLISTÉ' | 'ARCHIVÉ'; assigned_at?: string; replaced_at?: string | null; replaced_by?: string | null; reason?: string | null; notes?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
-        Update: { id?: string; member_id?: string; rfid_uid?: string; status?: 'ACTIF' | 'REMPLACÉ' | 'DÉSACTIVÉ' | 'PERDU' | 'VOLÉ' | 'BLACKLISTÉ' | 'ARCHIVÉ'; assigned_at?: string; replaced_at?: string | null; replaced_by?: string | null; reason?: string | null; notes?: string | null; created_by?: string | null; created_at?: string; updated_at?: string }
+        Row: { id: string; member_id: string; rfid_uid: string; status: 'ACTIF' | 'REMPLACÉ' | 'DÉSACTIVÉ' | 'PERDU' | 'VOLÉ' | 'BLACKLISTÉ' | 'ARCHIVÉ'; assigned_at: string; replaced_at: string | null; replaced_by: string | null; reason: string | null; notes: string | null; created_by: string | null; released_at: string | null; released_by: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; member_id: string; rfid_uid: string; status?: 'ACTIF' | 'REMPLACÉ' | 'DÉSACTIVÉ' | 'PERDU' | 'VOLÉ' | 'BLACKLISTÉ' | 'ARCHIVÉ'; assigned_at?: string; replaced_at?: string | null; replaced_by?: string | null; reason?: string | null; notes?: string | null; created_by?: string | null; released_at?: string | null; released_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; member_id?: string; rfid_uid?: string; status?: 'ACTIF' | 'REMPLACÉ' | 'DÉSACTIVÉ' | 'PERDU' | 'VOLÉ' | 'BLACKLISTÉ' | 'ARCHIVÉ'; assigned_at?: string; replaced_at?: string | null; replaced_by?: string | null; reason?: string | null; notes?: string | null; created_by?: string | null; released_at?: string | null; released_by?: string | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
       rfid_read_logs: {

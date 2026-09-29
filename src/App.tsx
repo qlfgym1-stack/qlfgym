@@ -33,6 +33,7 @@ const Products = lazy(() => import('@/pages/products/products'))
 const AccessControl = lazy(() => import('@/pages/access-control/access-control'))
 const Badges = lazy(() => import('@/pages/badges/badges'))
 const Pointage = lazy(() => import('@/pages/pointage/pointage'))
+const RfidCheck = lazy(() => import('@/pages/rfid-check/rfid-check'))
 
 const MemberPortal = lazy(() => import('@/pages/member-portal/portal'))
 const CoachMode = lazy(() => import('@/pages/coach-mode/coach-mode'))
@@ -239,6 +240,7 @@ export default function App() {
 
               <Route path="access-control" element={<PageTransition><Suspense fallback={<Loading />}><AccessControl /></Suspense></PageTransition>} />
               <Route path="badges" element={<PageTransition><Suspense fallback={<Loading />}><Badges /></Suspense></PageTransition>} />
+              <Route path="rfid-check" element={<PageTransition><Suspense fallback={<Loading />}><RfidCheck /></Suspense></PageTransition>} />
               <Route path="member-portal" element={<PageTransition><Suspense fallback={<Loading />}><MemberPortal /></Suspense></PageTransition>} />
               <Route path="coach-mode" element={<PageTransition><Suspense fallback={<Loading />}><CoachMode /></Suspense></PageTransition>} />
               <Route path="coach-portal" element={<PageTransition><Suspense fallback={<Loading />}><CoachPortal /></Suspense></PageTransition>} />

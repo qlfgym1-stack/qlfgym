@@ -38,6 +38,7 @@ import {
   UserSearch,
   Activity,
   ShieldCheck,
+  ScanLine,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -111,6 +112,7 @@ const navGroups: NavGroup[] = [
     groupKey: "access",
     items: [
       { key: "accessControl", icon: Shield, path: "/access-control" },
+      { key: "rfidCheck", icon: ScanLine, path: "/rfid-check" },
     ],
   },
   {
