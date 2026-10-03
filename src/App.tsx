@@ -39,6 +39,7 @@ const MemberPortal = lazy(() => import('@/pages/member-portal/portal'))
 const CoachMode = lazy(() => import('@/pages/coach-mode/coach-mode'))
 const CoachPortal = lazy(() => import('@/pages/coach-portal/coach-portal'))
 const Rh = lazy(() => import('@/pages/rh/rh'))
+const CoachAssignment = lazy(() => import('@/pages/coach-assignment/coach-assignment'))
 const Reports = lazy(() => import('@/pages/reports/reports'))
 const Corporate = lazy(() => import('@/pages/corporate/corporate'))
 const Notifications = lazy(() => import('@/pages/notifications/notifications'))
@@ -245,6 +246,7 @@ export default function App() {
               <Route path="coach-mode" element={<PageTransition><Suspense fallback={<Loading />}><CoachMode /></Suspense></PageTransition>} />
               <Route path="coach-portal" element={<PageTransition><Suspense fallback={<Loading />}><CoachPortal /></Suspense></PageTransition>} />
               <Route path="rh" element={<PageTransition><Suspense fallback={<Loading />}><Rh /></Suspense></PageTransition>} />
+              <Route path="coach-assignment" element={<PageTransition><Suspense fallback={<Loading />}><CoachAssignment /></Suspense></PageTransition>} />
               <Route path="expenses" element={<PageTransition><Suspense fallback={<Loading />}><Expenses /></Suspense></PageTransition>} />
               <Route path="assistant-comptable" element={<PageTransition><Suspense fallback={<Loading />}><AssistantComptable /></Suspense></PageTransition>} />
               <Route path="reports" element={<PageTransition><Suspense fallback={<Loading />}><Reports /></Suspense></PageTransition>} />

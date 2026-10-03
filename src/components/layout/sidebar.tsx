@@ -39,6 +39,7 @@ import {
   Activity,
   ShieldCheck,
   ScanLine,
+  UserCheck,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -80,6 +81,7 @@ const navGroups: NavGroup[] = [
     groupKey: "members",
     items: [
       { key: "members", icon: Users, path: "/members" },
+      { key: "coachAssignment", icon: UserCheck, path: "/coach-assignment", adminOnly: true },
       { key: "subscriptions", icon: CreditCard, path: "/subscriptions" },
     ],
   },
@@ -169,7 +171,9 @@ const navGroups: NavGroup[] = [
 ]
 
 const VISIBLE_GROUPS: Record<string, string[]> = {
-  admin: ['dashboard', 'checkin', 'members', 'pos', 'stock', 'access', 'hr', 'finance', 'profitability', 'whatsapp', 'admin', 'ai', 'memberInsights'],
+  // 'sport' manquait côté admin : /coach-mode, /classes et /coach-portal
+  // n'étaient atteignables que par les coach, l'admin devait saisir l'URL.
+  admin: ['dashboard', 'checkin', 'members', 'pos', 'sport', 'stock', 'access', 'hr', 'finance', 'profitability', 'whatsapp', 'admin', 'ai', 'memberInsights'],
   staff: ['dashboard', 'checkin', 'members', 'pos'],
   coach: ['dashboard', 'checkin', 'members', 'pos', 'sport'],
   reception: ['checkin', 'members', 'pos'],
