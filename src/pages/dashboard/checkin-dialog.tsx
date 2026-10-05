@@ -27,6 +27,7 @@ const DIALOG_TERMINAL = "dashboard"
 type ScanResult = {
   result: "granted" | "denied" | "pending"
   reason?: string
+  notice?: string
   member_id?: string
   attendance_id?: string
 }
@@ -84,7 +85,7 @@ export default function CheckinDialog({ open, onOpenChange }: CheckinDialogProps
       queryClient.invalidateQueries({ queryKey: ["turnstile-dashboard"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
       if (data.result === "granted") {
-        toast({ title: t("kiosk.granted") || "Accès autorisé" })
+        toast({ title: t("kiosk.granted") || "Accès autorisé", description: data.notice })
       } else if (data.result === "denied") {
         toast({ title: t("kiosk.denied") || "Accès refusé", description: data.reason, variant: "destructive" })
       } else {
@@ -131,7 +132,7 @@ export default function CheckinDialog({ open, onOpenChange }: CheckinDialogProps
       setManualReason("")
       setManualDetail("")
       if (data.result === "granted") {
-        toast({ title: "Validation manuelle effectuée" })
+        toast({ title: "Validation manuelle effectuée", description: data.notice })
       } else {
         toast({ title: t("kiosk.denied") || "Accès refusé", description: data.reason, variant: "destructive" })
       }
@@ -267,6 +268,7 @@ export default function CheckinDialog({ open, onOpenChange }: CheckinDialogProps
                    scanResult.result === "denied" ? (t("kiosk.denied") || "Accès refusé") :
                    (t("kiosk.pending") || "En attente")}
                 </p>
+                {scanResult.notice && <p className="text-sm font-medium">{scanResult.notice}</p>}
                 {scanResult.reason && <p className="text-sm text-muted-foreground">{scanResult.reason}</p>}
               </div>
             </div>

@@ -82,6 +82,7 @@ type MonthAttendanceRow = {
 type RfidScanResult = {
   result: string
   reason?: string
+  notice?: string
   member_id?: string
   member_name?: string
   action?: string
@@ -164,7 +165,7 @@ export default function PointagePage() {
   const [rfidCheckoutInput, setRfidCheckoutInput] = useState("")
   const [isScanning, setIsScanning] = useState(false)
   const [isCheckoutScanning, setIsCheckoutScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<{ result: "granted" | "denied"; reason?: string; action?: string; memberName?: string; member_id?: string } | null>(null)
+  const [scanResult, setScanResult] = useState<{ result: "granted" | "denied"; reason?: string; notice?: string; action?: string; memberName?: string; member_id?: string } | null>(null)
   const [dayDetail, setDayDetail] = useState<{ memberId: string; memberName: string } | null>(null)
   const [phone, setPhone] = useState("")
   const [checkedInMemberId, setCheckedInMemberId] = useState<string | null>(null)
@@ -514,13 +515,14 @@ export default function PointagePage() {
         }
       }
 
-      return { ...result, _raw: result } as { result: string; reason?: string; member_id?: string; member_name?: string; action?: string; attendance_id?: string; _raw: any }
+      return { ...result, _raw: result } as { result: string; reason?: string; notice?: string; member_id?: string; member_name?: string; action?: string; attendance_id?: string; _raw: any }
     },
     onSuccess: async (data: RfidScanResult) => {
       const isGranted = data.result === "granted"
       setScanResult({
         result: isGranted ? "granted" : "denied",
         reason: data.reason,
+        notice: data.notice,
         action: data.action,
         memberName: data.member_name,
         member_id: data.member_id,
@@ -556,10 +558,10 @@ export default function PointagePage() {
         ? (data.action === "check_out" ? "Départ enregistré" : "Entrée enregistrée")
         : (data.reason ?? "Accès refusé")
 
-      addScanLog(memberInfo, actionLabel, isGranted ? "granted" : "denied", isGranted ? undefined : data.reason, { member_id: data.member_id, attendance_id: data.attendance_id })
+      addScanLog(memberInfo, actionLabel, isGranted ? "granted" : "denied", isGranted ? data.notice : data.reason, { member_id: data.member_id, attendance_id: data.attendance_id })
 
       if (isGranted) {
-        toast({ title: actionLabel, description: memberInfo?.name ?? data.member_name })
+        toast({ title: actionLabel, description: [memberInfo?.name ?? data.member_name, data.notice].filter(Boolean).join(" — ") })
       } else {
         toast({ title: "Accès refusé", description: `${memberInfo?.name ? memberInfo.name + " — " : ""}${data.reason}`, variant: "destructive" })
       }
@@ -604,9 +606,9 @@ export default function PointagePage() {
         p_phone: phoneMembers?.find((m: PhoneMember) => m.id === memberId)?.phone ?? "",
         p_org_id: orgId,
       })
-      return { ...data, _memberId: memberId } as { result: string; reason?: string; member_id?: string; member_name?: string; action?: string; _memberId: string }
+      return { ...data, _memberId: memberId } as { result: string; reason?: string; notice?: string; member_id?: string; member_name?: string; action?: string; _memberId: string }
     },
-    onSuccess: async (data: { result: string; reason?: string; member_id?: string; member_name?: string; action?: string; _memberId: string }) => {
+    onSuccess: async (data: { result: string; reason?: string; notice?: string; member_id?: string; member_name?: string; action?: string; _memberId: string }) => {
       let memberInfo: ScanLogMember | null = null
       if (data._memberId) {
         memberInfo = await fetchMemberInfo(data._memberId)
@@ -615,8 +617,8 @@ export default function PointagePage() {
 
       if (data.result === "granted") {
         const actionLabel = data.action === "check_out" ? "Départ enregistré" : "Entrée enregistrée"
-        addScanLog(memberInfo, actionLabel, "granted", undefined, { member_id: data._memberId })
-        toast({ title: actionLabel, description: memberInfo?.name ?? data.member_name })
+        addScanLog(memberInfo, actionLabel, "granted", data.notice, { member_id: data._memberId })
+        toast({ title: actionLabel, description: [memberInfo?.name ?? data.member_name, data.notice].filter(Boolean).join(" — ") })
       } else {
         addScanLog(memberInfo, data.reason ?? "Accès refusé", "denied", data.reason, { member_id: data._memberId })
         toast({ title: "Accès refusé", description: `${memberInfo?.name ? memberInfo.name + " — " : ""}${data.reason}`, variant: "destructive" })
@@ -888,6 +890,9 @@ export default function PointagePage() {
                   <p className="font-semibold text-sm">
                     {scanResult.result === "granted" ? "Accès autorisé" : "Accès refusé"}
                   </p>
+                  {scanResult.notice && (
+                    <p className="text-xs opacity-90 font-medium">{scanResult.notice}</p>
+                  )}
                   {scanResult.memberName && (
                     scanResult.member_id ? (
                       <button
