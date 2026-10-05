@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@/hooks/useQuery'
 import { useSupabase } from '@/hooks/useSupabase'
@@ -14,10 +14,11 @@ import { fr } from 'date-fns/locale'
 import {
   Users, UserCheck, DollarSign, CalendarDays, TrendingUp, Percent,
   Database, FileText, UserCog, Heart, BarChart3,
-  RefreshCw, UserPlus, CreditCard, Wallet, Target, Loader2, XCircle,
+  RefreshCw, UserPlus, CreditCard, Wallet, Target, Loader2, XCircle, ScanLine,
 } from 'lucide-react'
 import { formatCurrency, toUpper } from '@/lib/utils'
 import { buildSubscriptionIndex, isDuplicateSubscriptionPos } from '@/lib/ledger-dedupe'
+import CheckinDialog from './checkin-dialog'
 
 interface DashboardData {
   total_members: number
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const { organization } = useAuth()
   const { toast } = useToast()
   const orgId = organization?.id
+  const [checkinOpen, setCheckinOpen] = useState(false)
 
 const REALTIME_DEBOUNCE = 4000
 // KPI temps réel (Adhérents Actifs, Check-ins, Taux d'Occupation) : rafraîchis
@@ -269,12 +271,20 @@ const occupancyRate = dash.active_members > 0
         title={t('dashboard.title')}
         description={t('dashboard.overview')}
         actions={
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            {t('dashboard.refresh') || 'Actualiser'}
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => setCheckinOpen(true)}>
+              <ScanLine className="mr-2 h-4 w-4" />
+              Pointage rapide
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {t('dashboard.refresh') || 'Actualiser'}
+            </Button>
+          </>
         }
       />
+
+      <CheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} />
 
       {/* Row 1 – Core KPIs */}
       <div>
