@@ -84,8 +84,17 @@ serve(async (req) => {
 
     switch (action) {
       case 'list': {
+        const search = typeof params.search === 'string' ? params.search.trim().toLowerCase() : ''
+
+        // `auth.admin.listUsers` ne supporte ni recherche ni tri : c'est une
+        // pagination opaque. Le front envoyait `search`, qui était ignoré ->
+        // la recherche ne filtrait RIEN et renvoyait toute la page. Quand une
+        // recherche est demandee on recupere donc la liste en un seul appel
+        // (large perPage) et on filtre ici, sinon la pagination serveur ne
+        // porterait que sur une page arbitraire.
         const page = params.page || 1
-        const perPage = params.perPage || 100
+        const requestedPerPage = params.perPage || 100
+        const perPage = search ? 1000 : requestedPerPage
         const { data: users, error } = await supabase.auth.admin.listUsers({ page, perPage })
         if (error) throw error
 
@@ -97,13 +106,13 @@ serve(async (req) => {
             .in('user_id', userIds),
           supabase
             .from('staff')
-            .select('user_id, rfid_uid, username, is_active')
+            .select('user_id, rfid_uid, username, is_active, first_name, last_name')
             .in('user_id', userIds),
         ])
 
         const staffByUser = new Map<string, any>((staffRows || []).map((s: any) => [s.user_id, s]))
 
-        const enriched = users.users.map((u: any) => ({
+        let enriched = users.users.map((u: any) => ({
           id: u.id,
           email: u.email,
           username: staffByUser.get(u.id)?.username ?? null,
@@ -116,7 +125,32 @@ serve(async (req) => {
           rfidUid: staffByUser.get(u.id)?.rfid_uid ?? null,
         }))
 
-        return new Response(JSON.stringify({ users: enriched, total: users.total ?? enriched.length }), {
+        let total = users.total ?? enriched.length
+
+        if (search) {
+          enriched = enriched.filter((u: any) => {
+            const staff = staffByUser.get(u.id)
+            const haystack = [
+              u.email,
+              u.username,
+              u.phone,
+              staff?.first_name,
+              staff?.last_name,
+              `${staff?.first_name ?? ''} ${staff?.last_name ?? ''}`,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase()
+            return haystack.includes(search)
+          })
+          // Le total suit le filtre : la pagination reste donc coherente, on
+          // reapplique la fenetre demandee par le front sur la liste filtree.
+          total = enriched.length
+          const start = (page - 1) * requestedPerPage
+          enriched = enriched.slice(start, start + requestedPerPage)
+        }
+
+        return new Response(JSON.stringify({ users: enriched, total, searched: Boolean(search) }), {
           headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
         })
       }

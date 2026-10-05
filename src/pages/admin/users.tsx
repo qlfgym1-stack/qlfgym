@@ -115,7 +115,13 @@ const users = data?.users ?? []
     },
     onSuccess: (result: Record<string, unknown>) => {
       const user = result.user as { id: string; email: string; username?: string | null } | undefined
-      toast({ title: t('admin.users.created'), description: `${user?.username ?? user?.email ?? ''} (password: ${result.password ?? ''})` })
+      // La Edge Function ne renvoie PAS le mot de passe (elle ne le reçoit
+      // qu'en entrée pour `auth.admin.createUser`) : lire `result.password`
+      // affichait toujours « (password: ) » et laissait l'administrateur sans
+      // aucun moyen de communiquer les accès au nouvel utilisateur. On
+      // affiche donc le mot de passe généré côté formulaire.
+      const createdPassword = (result.password as string | undefined) ?? createForm.password
+      toast({ title: t('admin.users.created'), description: `${user?.username ?? user?.email ?? ''} (password: ${createdPassword})` })
       setCreateOpen(false)
       setCreateForm({ email: "", username: "", phone: "", first_name: "", last_name: "", password: "", role: "staff", rfid_uid: "" })
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })

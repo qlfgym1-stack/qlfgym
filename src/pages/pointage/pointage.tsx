@@ -24,6 +24,7 @@ import {
 import { useNavigate } from "react-router-dom"
 import { PageHeader } from "@/components/layout"
 import { getInitials, toUpper, formatCurrency, formatPhone, displayPhone } from "@/lib/utils"
+import { countSessionsDone, MAX_CHECKINS } from "@/lib/sessions"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { buildDayStats } from "./lib/dayActivity"
@@ -429,16 +430,33 @@ export default function PointagePage() {
       const daysLeft = endDate ? daysBetween(endDate) : null
       const subType = sub?.subscription_type ?? null
 
+      // Séances consommées = jours de présence distincts sur la période EN COURS
+      // de l'abonnement. Voir src/lib/sessions.ts (countSessionsDone) : l'ancien
+      // calcul fenêtrait [end_date - 30j, end_date], ce qui comptait des
+      // présences antérieures à l'abonnement et comptait deux check-ins le
+      // même jour comme deux séances.
       let sessionsDone: number | null = null
-      if (subType?.max_classes != null && endDate) {
-        const { count } = await supabase
-          .from("attendance")
-          .select("id", { count: "exact", head: true })
-          .eq("member_id", memberId)
-          .eq("organization_id", orgId)
-          .gte("check_in", new Date(new Date(endDate).getTime() - 30 * 86400000).toISOString())
-          .lte("check_in", endDate)
-        sessionsDone = count ?? 0
+      if (subType?.max_classes != null && sub?.start_date && endDate) {
+        const startIso = new Date(sub.start_date).toISOString()
+        const nowIso = new Date().toISOString()
+        if (nowIso < startIso) {
+          // Abonnement pas encore commencé : aucune séance consommée.
+          sessionsDone = 0
+        } else {
+          const periodEnd = nowIso < endDate ? nowIso : endDate
+          const { data: rows } = await supabase
+            .from("attendance")
+            .select("check_in")
+            .eq("member_id", memberId)
+            .eq("organization_id", orgId)
+            .gte("check_in", startIso)
+            .lte("check_in", periodEnd)
+            .limit(MAX_CHECKINS)
+          sessionsDone = countSessionsDone(
+            ((rows ?? []) as { check_in: string | null }[]).map((r) => r.check_in),
+            { startDate: sub.start_date, endDate: endDate, now: nowIso },
+          )
+        }
       }
 
       return {
