@@ -108,6 +108,15 @@
 ### Blocked
 - **(none)**
 
+## Latest (10/10/2026) — édition membre ≠ création d'abonnement (coach/groupe isolé)
+- **Bug rapporté** : une simple modification administrative d'un membre (intégration groupe / affectation coach) pouvait **créer un abonnement `pending_payment` et rediriger vers `/pos`**, perturbant ensuite la comptabilité.
+- **Cause exacte (front uniquement)** : le SQL est propre — « groupe » = affectation coach (`assign_members_to_coach`, migration `00137`, n'écrit que `members.coach_id` + audit) ; aucun trigger sur `members` ne touche `member_subscriptions`/`payments`. Le seul couplage était `members.tsx` `updateMutation` : après l'`UPDATE members`, si `subscription_type_id && start_date` il insérait un abonnement + `navigate('/pos')`. Le garde comparait le type saisi au **cache vivant** `memberSubMap` (prérempli à l'ouverture) → identique en cas normal mais **fragile en course/cache périmé** (type changé entre ouverture et sauvegarde → création non voulue). Pas de bug déterministe reproduit côté DB ; correctif de durcissement validé par l'utilisateur.
+- **Correctif** : capture du **type d'origine** à l'ouverture du dialogue (`originalSubTypeIdRef`, renseigné dans `openAddDialog`/`openEditDialog`) + helper pur `shouldCreateSubscriptionOnMemberEdit(selected, original)` → on ne crée un abonnement **que si l'utilisateur a réellement changé le type**. La fonctionnalité « changer le type » et les flux explicites (Renouveler → `/pos`, `update_subscription_dates` 00114) restent intacts.
+- **Fichiers** : `src/lib/member-subscription-edit.ts` (nouveau) + `src/lib/member-subscription-edit.test.ts` (**7 tests**), `src/pages/members/members.tsx`.
+- **Validations** : `npx tsc --noEmit` ✅ 0 erreur · `npx vitest --run` ✅ **335/335** (328 → +7) · `npx vite build` ✅ (precache 13). **Aucune migration DB** (changement front-only), **aucune donnée de prod modifiée**.
+- **Commit `b76cc95`** poussé sur `deploy/member-insights`.
+- **Déploiement Vercel (autorisation utilisateur, 10/10/2026)** : preview `dpl_Dn2wWhsZjpNh2QnxQ6aR8EtgNgr1` → `npx vercel promote … --yes` (nouvelle prod `FpKaYo5A2HUjHSt5Ngbc5kUmDvTi`). Vérifié : **`https://qlf-gym.vercel.app` sert build 233 / 2.1.12, `buildDate 2026-10-10T20:14:57Z`** (cache-buster). Le hash du chunk `members` diffère du build local car le build Vercel exécute `update-version.cjs --release` avant `vite build`.
+
 ## Latest (26/09/2026) — déploiement prod + nettoyage doublons POS + dedup
 - **Déploiement Vercel effectué** (autorisation utilisateur) : branche `deploy/member-insights` commit `72098b8` → **`https://qlf-gym.vercel.app`**. Vérifié : sw.js à **13 entrées** de precache (l'ancien build en avait 130), CSS hash identique au build local. Les correctifs C-1→C-13 sont donc en ligne.
   - ⚠️ **L'URL de prod est `qlf-gym.vercel.app`** (avec hyphen). `qlfgym.vercel.app` (sans hyphen) est un domaine PÉRIMÉ de l'ancien compte `moussa11` qui répond 200 mais sert un build obsolète. Cette erreur a fait perdre du temps : toujours vérifier via `qlf-gym` + le nombre d'entrées de precache, pas seulement le HTTP 200.
