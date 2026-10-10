@@ -27,6 +27,7 @@ import { DEFAULT_TEMPLATES, templateForStatus, toneForStatus } from '@/lib/whats
 import { fetchAllPages } from '@/lib/supabase-paging'
 import { downloadWorkbook } from '@/lib/exportWorkbook'
 import { buildColumnIndex, canonicalValues, MEMBER_ALIASES } from '@/lib/xlsxImport'
+import { shouldCreateSubscriptionOnMemberEdit } from '@/lib/member-subscription-edit'
 import { formatDate, getInitials, getStatusColor, toUpper, formatCurrency, formatPhone, isValidDzPhone, displayPhone, memberFullName, splitFullName } from '@/lib/utils'
 import type { Member, SubscriptionType, RfidCard } from '@/types/supabase'
 import { RfidManagementDialog, RfidCreateSection } from './rfid-management'
@@ -198,6 +199,7 @@ export default function Members() {
   const [deletingMember, setDeletingMember] = useState<Member | null>(null)
   const [avatarUploadedUrl, setAvatarUploadedUrl] = useState<string | null>(null)
   const photoUrlRef = useRef<string | null>(null)
+  const originalSubTypeIdRef = useRef<string>('')
   const [photoUploading, setPhotoUploading] = useState(false)
   const tempMemberIdRef = useRef(crypto.randomUUID())
   const [isExporting, setIsExporting] = useState(false)
@@ -659,14 +661,11 @@ export default function Members() {
         setMockMembers(prev => prev.map(m => m.id === id ? { ...m, ...values, first_name, last_name, photo_url, updated_at: new Date().toISOString() } as Member : m))
         if (values.subscription_type_id && values.start_date) {
           const typeDef = subscriptionTypes?.find((t: SubscriptionType) => t.id === values.subscription_type_id)
-          if (typeDef) {
-            const existingSub = mockSubMap[id]
-            if (!existingSub || existingSub.subscription_type_id !== values.subscription_type_id) {
-              const subId = `mock-sub-${crypto.randomUUID()}`
-              setMockSubMap(prev => { const prevEntry = prev[id]; return { ...prev, [id]: { id: subId, subscription_type_id: values.subscription_type_id!, name: typeDef.name, status: 'pending_payment', total_amount: typeDef.price, start_date: values.start_date || new Date().toISOString().split('T')[0], end_date: new Date(new Date(values.start_date || new Date()).getTime() + (typeDef.duration_days || 30) * 86400000).toISOString().split('T')[0], sub_count: (prevEntry?.sub_count || 0) + 1 } as const } })
-              if (rfidUid) setMockRfidMap(prev => ({ ...prev, [id]: rfidUid }))
-              return { member_id: id, subscription_id: subId, total_amount: typeDef.price, subscription_name: typeDef.name, organization_id: orgId, first_name, last_name }
-            }
+          if (typeDef && shouldCreateSubscriptionOnMemberEdit(values.subscription_type_id, originalSubTypeIdRef.current)) {
+            const subId = `mock-sub-${crypto.randomUUID()}`
+            setMockSubMap(prev => { const prevEntry = prev[id]; return { ...prev, [id]: { id: subId, subscription_type_id: values.subscription_type_id!, name: typeDef.name, status: 'pending_payment', total_amount: typeDef.price, start_date: values.start_date || new Date().toISOString().split('T')[0], end_date: new Date(new Date(values.start_date || new Date()).getTime() + (typeDef.duration_days || 30) * 86400000).toISOString().split('T')[0], sub_count: (prevEntry?.sub_count || 0) + 1 } as const } })
+            if (rfidUid) setMockRfidMap(prev => ({ ...prev, [id]: rfidUid }))
+            return { member_id: id, subscription_id: subId, total_amount: typeDef.price, subscription_name: typeDef.name, organization_id: orgId, first_name, last_name }
           }
         }
         if (rfidUid) setMockRfidMap(prev => ({ ...prev, [id]: rfidUid }))
@@ -677,34 +676,31 @@ export default function Members() {
       if (error) throw error
       if (subscription_type_id && start_date) {
         const typeDef = subscriptionTypes?.find((t: SubscriptionType) => t.id === subscription_type_id)
-        if (typeDef) {
+        if (typeDef && shouldCreateSubscriptionOnMemberEdit(subscription_type_id, originalSubTypeIdRef.current)) {
           const end = new Date(start_date)
           end.setDate(end.getDate() + typeDef.duration_days)
-          const existingSub = memberSubMap ? (memberSubMap as Record<string, { id: string; subscription_type_id: string; name: string; status: string }>)[id] : null
-          if (!existingSub || existingSub.subscription_type_id !== subscription_type_id) {
-            const { data: subData, error: subError } = await supabase.from('member_subscriptions').insert({
-              organization_id: orgId,
-              member_id: id,
-              subscription_type_id,
-              start_date,
-              end_date: end.toISOString().split('T')[0],
-              total_amount: typeDef.price,
-              amount_paid: 0,
-              status: 'pending_payment',
-            } as any).select().single()
-            if (subError) throw subError
-            if (rfidUid && rfidUid !== (rfidData[id]?.rfid_uid ?? '')) {
-              try { await (supabase.rpc as any)('assign_rfid_card', { p_member_id: id, p_rfid_uid: rfidUid, p_created_by: user?.id || null }) } catch (e) { console.error('RFID assignment failed:', e) }
-            }
-            return {
-              member_id: id,
-              subscription_id: subData.id,
-              total_amount: typeDef.price,
-              subscription_name: typeDef.name,
-              organization_id: orgId,
-              first_name,
-              last_name,
-            }
+          const { data: subData, error: subError } = await supabase.from('member_subscriptions').insert({
+            organization_id: orgId,
+            member_id: id,
+            subscription_type_id,
+            start_date,
+            end_date: end.toISOString().split('T')[0],
+            total_amount: typeDef.price,
+            amount_paid: 0,
+            status: 'pending_payment',
+          } as any).select().single()
+          if (subError) throw subError
+          if (rfidUid && rfidUid !== (rfidData[id]?.rfid_uid ?? '')) {
+            try { await (supabase.rpc as any)('assign_rfid_card', { p_member_id: id, p_rfid_uid: rfidUid, p_created_by: user?.id || null }) } catch (e) { console.error('RFID assignment failed:', e) }
+          }
+          return {
+            member_id: id,
+            subscription_id: subData.id,
+            total_amount: typeDef.price,
+            subscription_name: typeDef.name,
+            organization_id: orgId,
+            first_name,
+            last_name,
           }
         }
       }
@@ -754,6 +750,7 @@ export default function Members() {
     setAvatarUploadedUrl(null)
     setRfidUid('')
     form.reset({ full_name: '', email: '', phone: '', gender: '', birth_date: '', address: '', emergency_contact: '', emergency_phone: '', notes: '', subscription_type_id: '', start_date: new Date().toISOString().split('T')[0], coach_id: '', corporate_id: '' })
+    originalSubTypeIdRef.current = ''
     setDialogOpen(true)
   }
 
@@ -762,6 +759,7 @@ export default function Members() {
     setEditingMember(member)
     setAvatarUploadedUrl(null)
     const sub = memberSubMap ? (memberSubMap as Record<string, { id: string; subscription_type_id: string; name: string; status: string }>)[member.id] : null
+    originalSubTypeIdRef.current = sub?.subscription_type_id ?? ''
     form.reset({
       full_name: memberFullName(member),
       email: member.email ?? '',
