@@ -363,12 +363,12 @@ const users = data?.users ?? []
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => { if (!createMutation.isPending) setCreateOpen(open); }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{t('admin.users.createTitle')}</DialogTitle>
             <DialogDescription>{t('admin.users.createDescription')}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 overflow-y-auto py-4 pr-1">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('admin.users.firstName')}</label>
@@ -430,7 +430,7 @@ const users = data?.users ?? []
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={createMutation.isPending}>
               {t('common.cancel')}
             </Button>
