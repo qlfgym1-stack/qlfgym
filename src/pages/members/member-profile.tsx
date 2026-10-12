@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { Loader2, User, Mail, Phone, MapPin, Cake, Siren, NotebookPen, UserRound, Banknote, CalendarCheck2, ShoppingCart, History, Shield, UserCheck, CreditCard, CalendarClock } from 'lucide-react'
 import { formatDate, formatCurrency, formatDateTime, getInitials, getStatusColor, toUpper, memberFullName, displayPhone } from '@/lib/utils'
 import type { Member } from '@/types/supabase'
-import { EditSubscriptionDatesDialog } from './edit-subscription-dates'
+import { ManageSubscriptionDialog } from './manage-subscription-dialog'
 
 interface MemberProfileDialogProps {
   member: Member | null
@@ -26,6 +26,7 @@ interface MemberProfileDialogProps {
 interface ProfileStats {
   currentSub: {
     id: string | null
+    subscription_type_id: string
     name: string
     status: string
     start_date: string
@@ -71,7 +72,7 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
   const supabase = useSupabase()
   const { organization, roles } = useAuth()
   const orgId = organization?.id
-  const [editDatesOpen, setEditDatesOpen] = useState(false)
+  const [manageSubOpen, setManageSubOpen] = useState(false)
   const canEditSubscriptionDates = !!orgId && (roles ?? []).some((r) => r.organization_id === orgId && (r.role === 'admin' || r.role === 'receptionist'))
 
   const { data: stats, isLoading } = useQuery({
@@ -80,7 +81,7 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
       if (!member) return { currentSub: null, paymentsCount: 0, paymentsTotal: 0, attendanceCount: 0, posTotal: 0, coach: null, rfidUid: null, recentAttendance: [], recentPos: [] }
       if (IS_MOCK) {
         return {
-          currentSub: { id: null, name: '1 Mois', status: 'active', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 86400000 * 30).toISOString(), total_amount: 2400, amount_paid: 2400 },
+          currentSub: { id: null, subscription_type_id: 'mock-st-2', name: '1 Mois', status: 'active', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 86400000 * 30).toISOString(), total_amount: 2400, amount_paid: 2400 },
           paymentsCount: 3,
           paymentsTotal: 7200,
           attendanceCount: 12,
@@ -147,6 +148,7 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
         currentSub: subRow
           ? {
               id: subRow.id,
+              subscription_type_id: subRow.subscription_type_id ?? '',
               name: subRow.subscription_types?.name || '—',
               status: subRow.status,
               start_date: subRow.start_date,
@@ -242,15 +244,15 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold">{t('members.subscriptions') || 'Abonnement'}</p>
                   <div className="flex items-center gap-2">
-                    {canEditSubscriptionDates && sub?.id && (
+                    {canEditSubscriptionDates && (
                       <button
                         type="button"
-                        onClick={() => setEditDatesOpen(true)}
+                        onClick={() => setManageSubOpen(true)}
                         className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
-                        title={t('members.profile.editSubscriptionDate') || 'Modifier la date d’abonnement'}
+                        title={sub?.id ? (t('members.profile.editSubscriptionDate') || 'Modifier l’abonnement') : (t('members.profile.manageSubscriptionAssignTitle') || 'Attribuer un abonnement')}
                       >
                         <CalendarClock className="h-3.5 w-3.5" />
-                        {t('members.profile.editSubscriptionDate') || 'Modifier la date'}
+                        {sub?.id ? (t('members.profile.manageSubscriptionEditTitle') || 'Modifier l’abonnement') : (t('members.profile.manageSubscriptionAssignTitle') || 'Attribuer un abonnement')}
                       </button>
                     )}
                     <Badge className={subStatusVariant}>{subStatusLabel}</Badge>
@@ -372,15 +374,20 @@ export function MemberProfileDialog({ member, open, onOpenChange, onShowHistory,
         </DialogContent>
       </Dialog>
 
-      {member && stats?.currentSub?.id && (
-        <EditSubscriptionDatesDialog
-          open={editDatesOpen}
-          onOpenChange={setEditDatesOpen}
+      {member && canEditSubscriptionDates && (
+        <ManageSubscriptionDialog
+          open={manageSubOpen}
+          onOpenChange={setManageSubOpen}
           member={member}
-          subscriptionId={stats.currentSub.id}
           memberName={memberFullName(member)}
-          currentStart={stats.currentSub.start_date}
-          currentEnd={stats.currentSub.end_date}
+          currentSub={stats?.currentSub?.id ? {
+            id: stats.currentSub.id,
+            subscription_type_id: stats.currentSub.subscription_type_id,
+            name: stats.currentSub.name,
+            status: stats.currentSub.status,
+            start_date: stats.currentSub.start_date,
+            end_date: stats.currentSub.end_date,
+          } : null}
         />
       )}
     </>
