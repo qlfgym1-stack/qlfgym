@@ -861,6 +861,7 @@ const ar = {
     method: "الوسيلة",
     status: "الحالة",
     date: "التاريخ",
+    time: "الساعة",
     viewDetails: "عرض التفاصيل ←",
     cash: "نقداً",
     card: "بطاقة",

@@ -266,6 +266,7 @@ export default function Encaissement() {
   const handleExport = useCallback(() => {
     const exportData = filtered.map((r: EncaissementRow) => ({
       date: format(new Date(r.date), "dd/MM/yyyy", { locale: fr }),
+      heure: format(new Date(r.date), "HH:mm", { locale: fr }),
       type: r.detailType === "subscription" ? (t("encaissement.subscription") || "Abonnement") : r.detailType === "renewal" ? (t("encaissement.renewal") || "Renouvellement") : r.detailType === "dropin" ? (t("encaissement.dropin") || "Séance libre") : (t("encaissement.product") || "Produit"),
       detail: r.description,
       member: r.memberName,
@@ -281,6 +282,7 @@ export default function Encaissement() {
     "encaissements",
     [
       { key: "date", label: t("encaissement.date") || "Date" },
+      { key: "heure", label: t("encaissement.time") || "Heure" },
       { key: "type", label: t("encaissement.type") || "Type" },
       { key: "detail", label: t("encaissement.detail") || "Détail" },
       { key: "member", label: t("pos.member") || "Membre" },
@@ -530,6 +532,7 @@ export default function Encaissement() {
                   <thead>
                     <tr className="border-b text-xs text-muted-foreground">
                       <th className="text-left p-3 font-medium">{t("encaissement.date") || "Date"}</th>
+                      <th className="text-left p-3 font-medium">{t("encaissement.time") || "Heure"}</th>
                       <th className="text-left p-3 font-medium">{t("encaissement.type") || "Type"}</th>
                       <th className="text-left p-3 font-medium">{t("pos.member") || "Membre"}</th>
                       <th className="text-left p-3 font-medium">{t("encaissement.detail") || "Détail"}</th>
@@ -544,6 +547,9 @@ export default function Encaissement() {
                       <tr key={`${row.type}-${row.id}`} className="border-b last:border-0 hover:bg-accent/30">
                         <td className="p-3 whitespace-nowrap">
                           {format(new Date(row.date), "dd/MM/yyyy", { locale: fr })}
+                        </td>
+                        <td className="p-3 whitespace-nowrap tabular-nums text-muted-foreground">
+                          {format(new Date(row.date), "HH:mm", { locale: fr })}
                         </td>
                         <td className="p-3 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">

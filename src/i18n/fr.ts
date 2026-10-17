@@ -852,6 +852,7 @@ const fr = {
     method: "Moyen",
     status: "Statut",
     date: "Date",
+    time: "Heure",
     viewDetails: "Voir détail →",
     cash: "Espèces",
     card: "Carte",

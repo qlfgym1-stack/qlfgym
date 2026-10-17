@@ -846,6 +846,7 @@ const en = {
     method: "Method",
     status: "Status",
     date: "Date",
+    time: "Time",
     viewDetails: "View details →",
     cash: "Cash",
     card: "Card",
