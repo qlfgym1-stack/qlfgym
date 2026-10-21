@@ -1,7 +1,8 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+﻿import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
+  'https://qlfgym.pages.dev',
   'https://qlf-gym.vercel.app',
   'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
   'https://qlf-gym.vercel.app',
@@ -39,7 +40,7 @@ function formatWhatsAppPhone(phone: string): string {
 }
 
 function buildMessage(name: string, endDate: string, salle: string): string {
-  return `Bonjour ${name}, votre abonnement expirera le ${endDate} à ${salle}. Pensez à le renouveler !`
+  return `Bonjour ${name}, votre abonnement expirera le ${endDate} Ã  ${salle}. Pensez Ã  le renouveler !`
 }
 
 function getToday(): string {

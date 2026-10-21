@@ -1,7 +1,8 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+﻿import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
+  'https://qlfgym.pages.dev',
   'https://qlf-gym.vercel.app',
   'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
   'https://qlfgym1-stack.github.io',
@@ -23,14 +24,14 @@ function getCorsHeaders(request: Request) {
   }
 }
 
-// Sécurité : l'email du SUPER_ADMIN n'est JAMAIS en dur dans le code frontend.
-// Il est configuré comme secret de l'Edge Function (SUPER_ADMIN_EMAIL) et seul
-// ce compte, une fois connecté, peut déclencher l'élevage de son propre rôle.
+// SÃ©curitÃ© : l'email du SUPER_ADMIN n'est JAMAIS en dur dans le code frontend.
+// Il est configurÃ© comme secret de l'Edge Function (SUPER_ADMIN_EMAIL) et seul
+// ce compte, une fois connectÃ©, peut dÃ©clencher l'Ã©levage de son propre rÃ´le.
 //
 // Bootstrap initial (une seule fois) : si le compte super_admin n'existe pas
-// encore dans auth.users, l'appelant peut le créer via le secret jetable
+// encore dans auth.users, l'appelant peut le crÃ©er via le secret jetable
 // SUPER_ADMIN_BOOTSTRAP_SECRET (header x-bootstrap-secret). Une fois le compte
-// créé, ce secret doit être retiré (supabase secrets unset).
+// crÃ©Ã©, ce secret doit Ãªtre retirÃ© (supabase secrets unset).
 serve(async (req) => {
   try {
     if (req.method === 'OPTIONS') {
@@ -73,7 +74,7 @@ serve(async (req) => {
         })
       }
 
-      // Vérifie si le compte existe déjà (boucle paginée pour >100 users).
+      // VÃ©rifie si le compte existe dÃ©jÃ  (boucle paginÃ©e pour >100 users).
       let existingUser = false
       let pageNumber = 1
       let hasMore = true
@@ -126,8 +127,8 @@ serve(async (req) => {
       })
     }
 
-    // Chemin normal : l'appelant doit être connecté ET son email doit
-    // correspondre au compte SUPER_ADMIN configuré.
+    // Chemin normal : l'appelant doit Ãªtre connectÃ© ET son email doit
+    // correspondre au compte SUPER_ADMIN configurÃ©.
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing token' }), {
@@ -155,7 +156,7 @@ serve(async (req) => {
       })
     }
 
-    // Assignation via RPC sécurisé (service_role requis côté BDD).
+    // Assignation via RPC sÃ©curisÃ© (service_role requis cÃ´tÃ© BDD).
     const { data, error } = await supabase.rpc('assign_super_admin_role_by_email', {
       p_email: superAdminEmail,
     })
