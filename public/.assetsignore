@@ -1,0 +1,4 @@
+# Workers rejects the SPA rewrite in _redirects (error 100324 "Infinite loop"),
+# because the Worker already sets not_found_handling = "single-page-application".
+# Cloudflare Pages does NOT read .assetsignore, so it still applies _redirects.
+_redirects
