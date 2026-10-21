@@ -11,6 +11,7 @@ async function hashEqual(a: string, b: string): Promise<boolean> {
 const allowedOrigins = [
   'https://qlf-gym.vercel.app',
   'https://qlfgym.pages.dev',
+  'https://qlfgym1.qlfgym1.workers.dev',
   'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
   'https://qlfgym1-stack.github.io',
   'https://qlfgym.vercel.app',
