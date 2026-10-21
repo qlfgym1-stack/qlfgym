@@ -1,4 +1,7 @@
-# Workers rejects the SPA rewrite in _redirects (error 100324 "Infinite loop"),
-# because the Worker already sets not_found_handling = "single-page-application".
-# Cloudflare Pages does NOT read .assetsignore, so it still applies _redirects.
-_redirects
+# Fichiers Wrangler generes par le CI / @cloudflare/vite-plugin :
+# ils ne doivent jamais etre telecharges comme assets du site.
+# (public/_redirects a ete deplace vers cloudflare-pages/_redirects car le
+#  Worker utilise deja not_found_handling = single-page-application et
+#  l'API rejette la regle /* -> /index.html en erreur 100324.)
+wrangler.json
+.dev.vars
