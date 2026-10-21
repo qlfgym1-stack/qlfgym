@@ -4,6 +4,7 @@ import { sha256, generateCode } from '../_shared/crypto.ts'
 
 const allowedOrigins = [
   'https://qlf-gym.vercel.app',
+  'https://qlfgym.pages.dev',
   'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
   'https://qlfgym1-stack.github.io',
   'https://qlfgym.vercel.app',

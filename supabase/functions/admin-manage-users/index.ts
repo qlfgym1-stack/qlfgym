@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const allowedOrigins = [
   'https://qlf-gym.vercel.app',
+  'https://qlfgym.pages.dev',
   'https://fitmanager-pro-fvh942ogp-qlfgym20-engs-projects.vercel.app',
   'https://qlfgym.vercel.app',
   'https://fitmanager-pro-dz-eight.vercel.app',
