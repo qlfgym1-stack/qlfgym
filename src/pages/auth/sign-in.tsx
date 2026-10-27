@@ -95,7 +95,9 @@ export default function SignIn() {
 
   async function handleGoogle() {
     setGoogleLoading(true)
-    const { error } = await signInWithProvider('google')
+    const { error } = await signInWithProvider('google', {
+      redirectTo: window.location.origin
+    })
     setGoogleLoading(false)
     if (error) {
       toast({ variant: 'destructive', title: t('auth.error'), description: error.message })
